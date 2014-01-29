@@ -1,4 +1,6 @@
 #include <cassert>
+#include <cmath>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <ctype.h>
@@ -163,6 +165,87 @@ lit_integer_token::lit_integer_token(char *c):
         case 1: subtype = static_cast<integer_type>(subtype | LONG     ); break;
         case 2: subtype = static_cast<integer_type>(subtype | LONG_LONG); break;
     }
+}
+
+lit_float_token::lit_float_token(char *c):
+    token(token::LIT_FLOAT, c)
+{
+    bool is_hex = (c[0] == '0') && (tolower(c[1] == 'x'));
+
+    if (is_hex)
+        c += 2;
+
+    // The maximum mantissa (80 bit) is 63 bit, so we're fine with 64 bit.
+    uint64_t int_part = 0;
+    int leftover_exponent = 0;
+    int base = is_hex ? 0x10 : 10;
+
+    while (*c != '.')
+    {
+        uint64_t mult = int_part * base;
+        if (mult / base != int_part)
+        {
+            // Just leave the rest, we can't store it in the float anyway, so who cares.
+            leftover_exponent++;
+            continue;
+        }
+
+        int_part = mult;
+        int_part += (*c > '9') ? (tolower(*c) - 'a' + 10) : (*c - '0');
+        c++;
+    }
+
+    c++;
+
+    uint64_t frac_part = 0;
+    int frac_exponent = 0;
+
+    while ((is_hex ? isxdigit : isdigit)(*c))
+    {
+        uint64_t mult = frac_part * base;
+        if (mult / base != frac_part)
+            continue;
+
+        frac_part = mult;
+        frac_part += (*c > '9') ? (tolower(*c) - 'a' + 10) : (*c - '0');
+        frac_exponent--;
+        c++;
+    }
+
+    int number_exponent = 0;
+
+    if ((is_hex && (tolower(*c) == 'p')) ||
+       (!is_hex && (tolower(*c) == 'e')))
+    {
+        bool negative = (*++c == '-');
+        if ((*c == '-') || (*c == '+'))
+            c++;
+
+        while (isdigit(*c))
+        {
+            number_exponent *= 10;
+            number_exponent += *c - '0';
+            c++;
+        }
+
+        if (negative)
+            number_exponent *= -1;
+    }
+
+    // I'm frigging lazy (for hex, it'd probably be relatively easy, but for dec...)
+    if (is_hex)
+        value = (int_part * exp2l(leftover_exponent * 4) + frac_part * exp2l(frac_exponent * 4)) * exp2l(number_exponent /* this exponent is binary */);
+    else
+        value = (int_part * exp10l(leftover_exponent) + frac_part * exp10l(frac_exponent)) * exp10l(number_exponent);
+
+    if (tolower(*c) == 'f')
+        subtype = FLOAT;
+    else if (tolower(*c) == 'l')
+        subtype = LONG_DOUBLE;
+    else if (!*c)
+        subtype = DOUBLE;
+    else
+        throw 0;
 }
 
 lit_bool_token::lit_bool_token(char *c):
@@ -342,40 +425,81 @@ std::vector<token *> tokenize(const char *str)
             else
                 t = new identifier_token(content);
         }
-        else if (isdigit(*str))
+        else if (isdigit(*str) || ((str[0] == '.') && isdigit(str[1])))
         {
+            bool is_float = (*str == '.');
+            bool is_hex = false;
+
             if (*str != '0')
                 do
                     str++;
                 while (isdigit(*str));
-            else if (tolower(*(++str)) != 'x')
+            else if (!is_float && (tolower(*(++str)) != 'x'))
                 while (isodigit(*str))
                     str++;
             else
+            {
+                is_hex = true;
                 do
                     str++;
                 while (isxdigit(*str));
-
-            bool had_unsigned = false;
-
-            if (tolower(*str) == 'u')
-            {
-                had_unsigned = true;
-                str++;
             }
 
-            if (tolower(*str) == 'l')
-                if (tolower(*++str) == 'l')
+            if (*str == '.')
+            {
+                is_float = true;
+
+                do
+                    str++;
+                while ((is_hex ? isxdigit : isdigit)(*str));
+            }
+
+            if (is_float &&
+                ((is_hex && (tolower(*str) == 'p')) ||
+                (!is_hex && (tolower(*str) == 'e'))))
+            {
+                str++;
+                if ((*str == '-') || (*str == '+'))
                     str++;
 
-            if ((tolower(*str) == 'u') && !had_unsigned)
-                str++;
+                if (!isdigit(*str))
+                    throw "Expected a decimal digit as floating point exponent";
+
+                while (isdigit(*str))
+                    str++;
+            }
+
+            if (is_float)
+            {
+                if ((tolower(*str) == 'f') || (tolower(*str) == 'l'))
+                    str++;
+            }
+            else
+            {
+                bool had_unsigned = false;
+
+                if (tolower(*str) == 'u')
+                {
+                    had_unsigned = true;
+                    str++;
+                }
+
+                if (tolower(*str) == 'l')
+                    if (tolower(*++str) == 'l')
+                        str++;
+
+                if ((tolower(*str) == 'u') && !had_unsigned)
+                    str++;
+            }
 
             char *content = new char[str - start + 1];
             memcpy(content, start, str - start);
             content[str - start] = 0;
 
-            t = new lit_integer_token(content);
+            if (is_float)
+                t = new lit_float_token(content);
+            else
+                t = new lit_integer_token(content);
         }
         else if (*str == '"')
         {

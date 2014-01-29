@@ -77,7 +77,16 @@ class lit_float_token:
     public token
 {
     public:
+        enum float_type
+        {
+            FLOAT,
+            DOUBLE,
+            LONG_DOUBLE
+        };
+
+        float_type subtype;
         long double value;
+
         lit_float_token(char *c);
 };
 
