@@ -8,9 +8,10 @@
 
 int main(int argc, char *argv[])
 {
-    if (argc < 2) {
+    if (argc < 2)
+    {
         fprintf(stderr, "%s: no input files\n", argv[0]);
-        return -1;
+        return 1;
     }
 
     for (int i = 1; i < argc; i++)
