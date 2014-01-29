@@ -117,7 +117,10 @@ lit_integer_token::lit_integer_token(char *c):
     else if (tolower(c[1]) != 'x')
         base = 010;
     else
+    {
         base = 0x10;
+        c += 2;
+    }
 
     char *suffix = c;
     while (*suffix && (tolower(*suffix) != 'u') && (tolower(*suffix) != 'l'))
