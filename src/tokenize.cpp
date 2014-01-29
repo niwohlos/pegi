@@ -299,6 +299,9 @@ std::vector<token *> tokenize(const char *str)
     const char *original_start = str;
     std::vector<token *> ret;
 
+    try
+    {
+
     while (*str)
     {
         while (*str && isspace(*str))
@@ -387,9 +390,7 @@ std::vector<token *> tokenize(const char *str)
                     }
                     catch (int __)
                     {
-                        throw_error(str, original_start, "Invalid escape sequence");
-                        for (token *_: ret) { delete _; }
-                        return std::vector<token *>();
+                        throw "Invalid escape sequence";
                     }
                 }
             }
@@ -411,17 +412,11 @@ std::vector<token *> tokenize(const char *str)
             }
             catch (int __)
             {
-                throw_error(str, original_start, "Invalid escape sequence");
-                for (token *_: ret) { delete _; }
-                return std::vector<token *>();
+                throw "Invalid escape sequence";
             }
 
             if (*str != '\'')
-            {
-                throw_error(str, original_start, "End of character sequence expected");
-                for (token *_: ret) { delete _; }
-                return std::vector<token *>();
-            }
+                throw "End of character sequence expected";
 
             str++;
 
@@ -445,16 +440,20 @@ std::vector<token *> tokenize(const char *str)
                 t = new operator_token(content);
             }
             else
-            {
-                throw_error(str, original_start, "Could not parse character");
-                for (token *_: ret) { delete _; }
-                return std::vector<token *>();
-            }
+                throw "Could not parse character";
         }
 
         if (t)
             ret.push_back(t);
 
+    }
+
+    }
+    catch (const char *msg)
+    {
+        throw_error(str, original_start, msg);
+        for (token *_: ret) { delete _; }
+        return std::vector<token *>();
     }
 
     return ret;
