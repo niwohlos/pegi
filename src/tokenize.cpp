@@ -311,7 +311,16 @@ std::vector<token *> tokenize(const char *str)
         const char *start = str;
 
 
-        if (isidentifiernondigit(*str))
+        if ((str[0] == '/') && (str[1] == '/'))
+            while (*str && (*str != '\n'))
+                str++;
+        else if ((str[0] == '/') && (str[1] == '*'))
+        {
+            str += 2;
+            while (*str && ((str[-2] != '*') || (str[-1] != '/')))
+                str++;
+        }
+        else if (isidentifiernondigit(*str))
         {
             do
                 str++;
