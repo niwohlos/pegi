@@ -59,7 +59,14 @@ class lit_integer_token:
             UNSIGNED  = (1 << 0),
             INT       = (0 << 1),
             LONG      = (1 << 1),
-            LONG_LONG = (2 << 1)
+            LONG_LONG = (2 << 1),
+
+            SIGNED_INT         =   SIGNED | INT,
+            UNSIGNED_INT       = UNSIGNED | INT,
+            SIGNED_LONG        =   SIGNED | LONG,
+            UNSIGNED_LONG      = UNSIGNED | LONG,
+            SIGNED_LONG_LONG   =   SIGNED | LONG_LONG,
+            UNSIGNED_LONG_LONG = UNSIGNED | LONG_LONG
         };
 
         integer_type subtype;

@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "tokenize.hpp"
+#include "translation_limits.hpp"
 
 
 static inline bool isnondigit(char c)
@@ -135,14 +136,19 @@ lit_integer_token::lit_integer_token(char *c):
         else
             l_counter++; // XXX: assert(tolower(suffix[i] == 'l'))
 
+retry:
     if (is_unsigned)
     {
         value.u = 0;
 
         while (c != suffix)
         {
+            unsigned long long new_value = value.u * base;
+            if (new_value / base != value.u)
+                throw 0;
+            value.u = new_value;
+
             char d = tolower(*(c++));
-            value.u *= base;
             value.u += (d > '9') ? (d - 'a' + 10) : (d - '0');
         }
 
@@ -151,11 +157,27 @@ lit_integer_token::lit_integer_token(char *c):
     else
     {
         value.s = 0;
+        char *restart_c = c;
 
         while (c != suffix)
         {
+            long long new_value = value.s * base;
+            if (new_value / base != value.s)
+            {
+                if (base == 10)
+                {
+                    // lol no unsigned for you (see below)
+                    throw 0;
+                }
+
+                is_unsigned = true;
+                c = restart_c;
+                // I'm so very sorry
+                goto retry;
+            }
+            value.s = new_value;
+
             char d = tolower(*(c++));
-            value.s *= base;
             value.s += (d > '9') ? (d - 'a' + 10) : (d - '0');
         }
 
@@ -167,6 +189,39 @@ lit_integer_token::lit_integer_token(char *c):
         case 0: subtype = static_cast<integer_type>(subtype | INT      ); break;
         case 1: subtype = static_cast<integer_type>(subtype | LONG     ); break;
         case 2: subtype = static_cast<integer_type>(subtype | LONG_LONG); break;
+    }
+
+    // promotions for everynyan! (lol this is crazy see table 6 in 2.14.2 for reference)
+    if (base == 10)
+    {
+        // keep signedness for decimal constants (lol why)
+        if ((subtype == SIGNED_INT) && ((value.s < TL_INT_MIN) || (value.s > TL_INT_MAX)))
+            subtype = SIGNED_LONG;
+        if ((subtype == UNSIGNED_INT) && (value.u > TL_UINT_MAX))
+            subtype = UNSIGNED_LONG;
+        if ((subtype == SIGNED_LONG) && ((value.s < TL_LONG_MIN) || (value.s < TL_LONG_MAX)))
+            subtype = SIGNED_LONG_LONG;
+        if ((subtype == UNSIGNED_LONG) && (value.u > TL_ULONG_MAX))
+            subtype = UNSIGNED_LONG_LONG;
+    }
+    else
+    {
+        // this seems more logical (BUT WHY WOULD YOU DO DECIMAL DIFFERENTLY):
+        // if u/U, always unsigned; if signed, make unsigned, if necessary
+        if ((subtype == SIGNED_INT) && (value.s < TL_INT_MIN))
+            subtype = SIGNED_LONG;
+        if ((subtype == SIGNED_INT) && (value.s > TL_INT_MAX))
+            subtype = UNSIGNED_INT;
+        if ((subtype == UNSIGNED_INT) && (value.u > TL_UINT_MAX))
+            subtype = is_unsigned ? UNSIGNED_LONG : SIGNED_LONG;
+        if ((subtype == SIGNED_LONG) && (value.s < TL_LONG_MIN))
+            subtype = SIGNED_LONG_LONG;
+        if ((subtype == SIGNED_LONG) && (value.s > TL_LONG_MAX))
+            subtype = UNSIGNED_LONG;
+        if ((subtype == UNSIGNED_LONG) && (value.u > TL_ULONG_MAX))
+            subtype = is_unsigned ? UNSIGNED_LONG_LONG : SIGNED_LONG_LONG;
+
+        // and whether it's signed or unsigned long long, that's already been decided
     }
 }
 
