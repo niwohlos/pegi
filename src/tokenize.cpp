@@ -489,27 +489,20 @@ std::vector<token *> tokenize(const char *str)
             bool is_hex = false;
 
             if (*str != '0')
-                do
-                    str++;
-                while (isdigit(*str));
+                while (isdigit(*++str));
             else if (!is_float && (tolower(*(++str)) != 'x'))
                 while (isodigit(*str))
                     str++;
             else
             {
                 is_hex = true;
-                do
-                    str++;
-                while (isxdigit(*str));
+                while (isxdigit(*++str));
             }
 
             if (*str == '.')
             {
                 is_float = true;
-
-                do
-                    str++;
-                while ((is_hex ? isxdigit : isdigit)(*str));
+                while ((is_hex ? isxdigit : isdigit)(*++str));
             }
 
             if (is_float &&
