@@ -6,6 +6,29 @@
 #include "tokenize.hpp"
 
 
+static void dump_token(token *tok)
+{
+    switch (tok->type)
+    {
+        case token::IDENTIFIER:  printf("Identifier:       %s\n", reinterpret_cast<identifier_token *>(tok)->value); break;
+        case token::KEYWORD:     printf("Keyword:          %s\n", reinterpret_cast<keyword_token *>(tok)->value); break;
+        case token::LIT_BOOL:    printf("Bool literal:     %s\n", reinterpret_cast<lit_bool_token *>(tok)->value ? "true" : "false"); break;
+        case token::LIT_FLOAT:   printf("Float literal:    %Lg\n", reinterpret_cast<lit_float_token *>(tok)->value); break;
+        case token::LIT_INTEGER:
+            if (reinterpret_cast<lit_integer_token *>(tok)->type & lit_integer_token::UNSIGNED)
+                                 printf("Integer literal:  %llu\n", reinterpret_cast<lit_integer_token *>(tok)->value.u);
+            else
+                                 printf("Integer literal:  %lli\n", reinterpret_cast<lit_integer_token *>(tok)->value.s);
+            break;
+        case token::LIT_POINTER: printf("Pointer literal:  %p\n", reinterpret_cast<lit_pointer_token *>(tok)->value); break;
+        case token::LIT_STRING:  printf("String literal:   %s\n", tok->content); break;
+        case token::LIT_CHAR:    printf("Char literal:     %s (%u)\n", tok->content, reinterpret_cast<lit_char_token *>(tok)->value); break;
+        case token::OPERATOR:    printf("Operator:         %s\n", reinterpret_cast<operator_token *>(tok)->value); break;
+        default:                 printf("Unknown token %2i: %s\n", tok->type, tok->content);
+    }
+}
+
+
 int main(int argc, char *argv[])
 {
     if (argc < 2)
@@ -41,25 +64,7 @@ int main(int argc, char *argv[])
 
         for (auto tok: token_list)
         {
-            switch (tok->type)
-            {
-                case token::IDENTIFIER:  printf("Identifier:       %s\n", reinterpret_cast<identifier_token *>(tok)->value); break;
-                case token::KEYWORD:     printf("Keyword:          %s\n", reinterpret_cast<keyword_token *>(tok)->value); break;
-                case token::LIT_BOOL:    printf("Bool literal:     %s\n", reinterpret_cast<lit_bool_token *>(tok)->value ? "true" : "false"); break;
-                case token::LIT_FLOAT:   printf("Float literal:    %Lg\n", reinterpret_cast<lit_float_token *>(tok)->value); break;
-                case token::LIT_INTEGER:
-                    if (reinterpret_cast<lit_integer_token *>(tok)->type & lit_integer_token::UNSIGNED)
-                                         printf("Integer literal:  %llu\n", reinterpret_cast<lit_integer_token *>(tok)->value.u);
-                    else
-                                         printf("Integer literal:  %lli\n", reinterpret_cast<lit_integer_token *>(tok)->value.s);
-                    break;
-                case token::LIT_POINTER: printf("Pointer literal:  %p\n", reinterpret_cast<lit_pointer_token *>(tok)->value); break;
-                case token::LIT_STRING:  printf("String literal:   %s\n", tok->content); break;
-                case token::LIT_CHAR:    printf("Char literal:     %s (%u)\n", tok->content, reinterpret_cast<lit_char_token *>(tok)->value); break;
-                case token::OPERATOR:    printf("Operator:         %s\n", reinterpret_cast<operator_token *>(tok)->value); break;
-                default:                 printf("Unknown token %2i: %s\n", tok->type, tok->content);
-            }
-
+            dump_token(tok);
             delete tok;
         }
 
