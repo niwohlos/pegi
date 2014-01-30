@@ -1,5 +1,5 @@
 CXX ?= g++
-CXXFLAGS = -O3 -Wall -Wextra -Wshadow -std=c++11 -Iinclude -g2
+CXXFLAGS = -O3 -Wall -Wextra -Wshadow -Wno-unused-label -std=c++11 -Iinclude -g2
 LIBS = -lm
 RM = rm -f
 

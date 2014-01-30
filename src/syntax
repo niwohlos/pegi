@@ -1,0 +1,870 @@
+-- left for implementation:
+--   balanced-token
+--   class-name
+--   enum-name
+--   namespace-alias
+--   original-namespace-name
+--   overloadable-operator
+--   template-name
+--   typedef-name
+
+translation-unit:
+  [declaration-seq]
+
+
+primary-expression:
+  lambda-expression
+  id-expression
+  operator("(") expression operator(")")
+  identifier("this")
+  literal
+
+literal:
+  lit-integer()
+  lit-float()
+  lit-bool()
+  lit-pointer()
+  lit-string()
+  lit-char()
+
+id-expression:
+  qualified-id
+  unqualified-id
+
+unqualified-id:
+  template-id
+  operator("~") decltype-specifier
+  operator("~") class-name
+  literal-operator-id
+  conversion-function-id
+  operator-function-id
+  identifier()
+
+qualified-id:
+  operator("::") template-id
+  operator("::") literal-operator-id
+  operator("::") operator-function-id
+  operator("::") identifier()
+  nested-name-specifier [keyword("template")] unqualified-id
+
+nested-name-specifier-repeatable:
+  [keyword("template")] simple-template-id operator("::")
+  identifier() operator("::")
+
+nested-name-specifier-start:
+  decltype-specifier operator("::")
+  [operator("::")] namespace-name operator("::")
+  [operator("::")] type-name operator("::")
+
+nested-name-specifier:
+  nested-name-specifier-start { nested-name-specifier-repeatable }
+
+lambda-expression:
+  lambda-introducer [lambda-declarator] compound-statement
+
+lambda-introducer:
+  operator("[") [lambda-capture] operator("]")
+
+lambda-capture:
+  capture-default operator(",") capture-list
+  capture-list
+  capture-default
+
+capture-default:
+  operator("=")
+  operator("&")
+
+capture-list:
+  capture [operator("...")] { operator(",") capture [operator("...")] }
+
+capture:
+  identifier("this")
+  operator("&") identifier()
+  identifier()
+
+lambda-declarator:
+  operator("(") parameter-declaration-clause operator(")") [keyword("mutable")] [exception-specification] [attribute-specifier-seq] [trailing-return-type]
+
+postfix-expression-repeatable:
+  operator("--")
+  operator("++")
+  operator("->") pseudo-destructor-name
+  operator(".") pseudo-destructor-name
+  operator("->") [keyword("template")] id-expression
+  operator(".") [keyword("template")] id-expression
+  operator("(") [expression-list] operator(")")
+  operator("[") braced-init-list operator("]")
+  operator("[") expression operator("]")
+
+postfix-expression-start:
+  keyword("typeid") operator("(") type-id operator(")")
+  keyword("typeid") operator("(") expression operator(")")
+  keyword("const_cast") operator("<") type-id operator(">") operator("(") expression operator(")")
+  keyword("reinterpret_cast") operator("<") type-id operator(">") operator("(") expression operator(")")
+  keyword("static_cast") operator("<") type-id operator(">") operator("(") expression operator(")")
+  keyword("dynamic_cast") operator("<") type-id operator(">") operator("(") expression operator(")")
+  typename-specifier braced-init-list
+  simple-type-specifier braced-init-list
+  typename-specifier operator("(") [expression-list] operator(")")
+  simple-type-specifier operator("(") [expression-list] operator(")")
+  primary-expression
+
+postfix-expression:
+  postfix-expression-start { postfix-expression-repeatable }
+
+expression-list:
+  initializer-list
+
+pseudo-destructor-name:
+  operator("~") decltype-specifier
+  [nested-name-specifier] operator("~") type-name
+  nested-name-specifier keyword("template") simple-template-id operator("::") operator("~") type-name
+  [nested-name-specifier] type-name operator("::") operator("~") type-name
+
+unary-expression:
+  delete-expression
+  new-expression
+  noexcept-expression
+  keyword("alignof") operator("(") type-id operator(")")
+  keyword("sizeof") operator("...") operator("(") identifier() operator(")")
+  keyword("sizeof") operator("(") type-id operator(")")
+  keyword("sizeof") unary-expression
+  unary-operator cast-expression
+  operator("--") cast-expression
+  operator("++") cast-expression
+  postfix-expression
+
+-- This might be implemented directly
+unary-operator:
+  operator("~")
+  operator("!")
+  operator("-")
+  operator("+")
+  operator("&")
+  operator("*")
+
+new-expression:
+  [operator("::")] operator("new") [new-placement] operator("(") type-id operator(")") [new-initializer]
+  [operator("::")] operator("new") [new-placement] new-type-id [new-initializer]
+
+new-placement:
+  operator("(") expression-list operator(")")
+
+new-type-id:
+  type-specifier-seq [new-declarator]
+
+new-declarator:
+  { ptr-operator } noptr-new-declarator
+
+noptr-new-declarator:
+  operator("[") expression operator("]") [attribute-specifier-seq] { operator("[") constant-expression operator("]") [attribute-specifier-seq] }
+
+new-initializer:
+  braced-init-list
+  operator("(") [expression-list] operator(")")
+
+delete-expression:
+  [operator("::")] operator("delete") operator("[") operator("]") cast-expression
+  [operator("::")] operator("delete") cast-expression
+
+noexcept-expression:
+  keyword("noexcept") operator("(") expression operator(")")
+
+cast-expression:
+  { operator("(") type-id operator(")") } unary-expression
+
+pm-operator:
+  operator("->*")
+  operator(".*")
+
+pm-expression:
+  cast-expression { pm-operator cast-expression }
+
+multiplicative-operator:
+  operator("%")
+  operator("/")
+  operator("*")
+
+multiplicative-expression:
+  pm-expression { multiplicative-operator pm-expression }
+
+additive-operator:
+  operator("-")
+  operator("+")
+
+additive-expression:
+  multiplicative-expression { additive-operator multiplicative-expression }
+
+shift-operator:
+  operator(">") operator(">")
+  operator("<<")
+
+shift-expression:
+  additive-expression { shift-operator additive-expression }
+
+relational-operator:
+  operator(">=")
+  operator("<=")
+  operator(">")
+  operator("<")
+
+relational-expression:
+  shift-expression { relational-operator shift-expression }
+
+equality-operator:
+  operator("!=")
+  operator("==")
+
+equality-expression:
+  relational-expression { equality-operator relational-expression }
+
+and-expression:
+  equality-expression { operator("&") equality-expression }
+
+exclusive-or-expression:
+  and-expression { operator("^") and-expression }
+
+inclusive-or-expression:
+  exclusive-or-expression { operator("|") exclusive-or-expression }
+
+logical-and-expression:
+  inclusive-or-expression { operator("&&") inclusive-or-expression }
+
+logical-or-expression:
+  logical-and-expression { operator("||") logical-and-expression }
+
+conditional-expression:
+  logical-or-expression operator("?") expression operator(":") assignment-expression
+  logical-or-expression
+
+assignment-expression:
+  throw-expression
+  logical-or-expression assignment-operator initializer-clause
+  conditional-expression
+
+-- This might be implemented directly
+assignment-operator:
+  operator("|=")
+  operator("^=")
+  operator("&=")
+  operator("<<=")
+  operator(">") operator(">=")
+  operator("-=")
+  operator("+=")
+  operator("%=")
+  operator("/=")
+  operator("*=")
+  operator("=")
+
+expression:
+  assignment-expression { operator(",") assignment-expression }
+
+constant-expression:
+  conditional-expression
+
+
+statement:
+  [attribute-specifier-seq] try-block
+  [attribute-specifier-seq] jump-statement
+  [attribute-specifier-seq] iteration-statement
+  [attribute-specifier-seq] selection-statement
+  [attribute-specifier-seq] compound-statement
+  [attribute-specifier-seq] expression-statement
+  declaration-statement
+  labeled-statement
+
+labeled-statement:
+  [attribute-specifier-seq] keyword("default") operator(":") statement
+  [attribute-specifier-seq] keyword("case") constant-expression operator(":") statement
+  [attribute-specifier-seq] identifier() operator(":") statement
+
+expression-statement:
+  [expression] operator(";")
+
+compound-statement:
+  operator("{") [statement-seq] operator("}")
+
+statement-seq:
+  statement { statement }
+
+selection-statement:
+  keyword("switch") operator("(") condition operator(")") statement
+  keyword("if") operator("(") condition operator(")") statement keyword("else") statement
+  keyword("if") operator("(") condition operator(")") statement
+
+condition:
+  [attribute-specifier-seq] decl-specifier-seq declarator braced-init-list
+  [attribute-specifier-seq] decl-specifier-seq declarator operator("=") initializer-clause
+  expression
+
+iteration-statement:
+  keyword("for") operator("(") for-range-declaration operator(":") for-range-initializer operator(")") statement
+  keyword("for") operator("(") for-init-statement [condition] operator(";") [expression] operator(")") statement
+  keyword("do") statement keyword("while") operator("(") expression operator(")") operator(";")
+  keyword("while") operator("(") condition operator(")") statement
+
+for-init-statement:
+  simple-declaration
+  expression-statement
+
+for-range-declaration:
+  [attribute-specifier-seq] decl-specifier-seq declarator
+
+for-range-initializer:
+  braced-init-list
+  expression
+
+jump-statement:
+  keyword("goto") identifier() operator(";")
+  keyword("return") braced-init-list operator(";")
+  keyword("return") [expression] operator(";")
+  keyword("continue") operator(";")
+  keyword("break") operator(";")
+
+declaration-statement:
+  block-declaration
+
+
+declaration-seq:
+  declaration { declaration }
+
+declaration:
+  attribute-declaration
+  empty-declaration
+  namespace-definition
+  linkage-specification
+  explicit-specialization
+  explicit-instantiation
+  template-declaration
+  function-definition
+  block-declaration
+
+block-declaration:
+  opaque-enum-declaration
+  alias-declaration
+  static_assert-declaration
+  using-directive
+  using-declaration
+  namespace-alias-definition
+  asm-definition
+  simple-declaration
+
+alias-declaration:
+  keyword("using") identifier() [attribute-specifier-seq] operator("=") type-id operator(";")
+
+simple-declaration:
+  attribute-specifier-seq [decl-specifier-seq] init-declarator-list operator(";")
+  [decl-specifier-seq] [init-declarator-list] operator(";")
+
+static_assert-declaration:
+  keyword("static_assert") operator("(") constant-expression operator(",") lit-string() operator(")") operator(";")
+
+empty-declaration:
+  operator(";")
+
+attribute-declaration:
+  attribute-specifier-seq operator(";")
+
+decl-specifier:
+  keyword("constexpr")
+  keyword("typedef")
+  keyword("friend")
+  function-specifier
+  type-specifier
+  storage-class-specifier
+
+decl-specifier-seq:
+  decl-specifier { decl-specifier } [attribute-specifier-seq]
+
+storage-class-specifier:
+  keyword("mutable")
+  keyword("extern")
+  keyword("thread_local")
+  keyword("static")
+  keyword("register")
+
+function-specifier:
+  keyword("explicit")
+  keyword("virtual")
+  keyword("inline")
+
+type-specifier:
+  enum-specifier
+  class-specifier
+  trailing-type-specifier
+
+trailing-type-specifier:
+  cv-qualifier
+  typename-specifier
+  elaborated-type-specifier
+  simple-type-specifier
+
+type-specifier-seq:
+  type-specifier { type-specifier } [attribute-specifier-seq]
+
+trailing-type-specifier-seq:
+  trailing-type-specifier { trailing-type-specifier } [attribute-specifier-seq]
+
+simple-type-specifier:
+  decltype-specifier
+  identifier("auto")
+  identifier("void")
+  identifier("double")
+  identifier("float")
+  identifier("unsigned")
+  identifier("signed")
+  identifier("long")
+  identifier("int")
+  identifier("short")
+  identifier("bool")
+  identifier("wchar_t")
+  identifier("char32_t")
+  identifier("char16_t")
+  identifier("char")
+  nested-name-specifier keyword("template") simple-template-id
+  [nested-name-specifier] type-name
+
+type-name:
+  simple-template-id
+  typedef-name
+  enum-name
+  class-name
+
+decltype-specifier:
+  keyword("decltype") operator("(") expression operator(")")
+
+elaborated-type-specifier:
+  keyword("enum") [nested-name-specifier] identifier()
+  class-key [nested-name-specifier] keyword("template") simple-template-id
+  class-key [attribute-specifier-seq] [nested-name-specifier] identifier()
+
+enum-specifier:
+  enum-head operator("{") [enumerator-list] operator("}")
+  enum-head operator("{") enumerator-list operator(",") operator("}")
+
+enum-head:
+  enum-key [attribute-specifier-seq] nested-name-specifier identifier() [enum-base]
+  enum-key [attribute-specifier-seq] [identifier()] [enum-base]
+
+opaque-enum-declaration:
+  enum-key [attribute-specifier-seq] identifier() [enum-base] operator(";")
+
+enum-key:
+  keyword("enum") keyword("struct")
+  keyword("enum") keyword("class")
+  keyword("enum")
+
+enum-base:
+  operator(":") type-specifier-seq
+
+enumerator-list:
+  enumerator-definition { operator(",") enumerator-definition }
+
+enumerator-definition:
+  enumerator operator("=") constant-expression
+  enumerator
+
+enumerator:
+  identifier()
+
+namespace-name:
+  namespace-alias
+  original-namespace-name
+
+namespace-definition:
+  unnamed-namespace-definition
+  named-namespace-definition
+
+named-namespace-definition:
+  extension-namespace-definition
+  original-namespace-definition
+
+original-namespace-definition:
+  [keyword("inline")] keyword("namespace") identifier() operator("{") namespace-body operator("}")
+
+extension-namespace-definition:
+  [keyword("inline")] keyword("namespace") original-namespace-name operator("{") namespace-body operator("}")
+
+unnamed-namespace-definition:
+  [keyword("inline")] keyword("namespace") operator("{") namespace-body operator("}")
+
+namespace-body:
+  [declaration-seq]
+
+namespace-alias-definition:
+  keyword("namespace") identifier() operator("=") qualified-namespace-specifier operator(";")
+
+qualified-namespace-specifier:
+  [nested-name-specifier] namespace-name
+
+using-declaration:
+  keyword("using") operator("::") unqualified-id operator(";")
+  keyword("using") [keyword("typename")] nested-name-specifier unqualified-id operator(";")
+
+using-directive:
+  [attribute-specifier-seq] keyword("using") keyword("namespace") [nested-name-specifier] namespace-name operator(";")
+
+asm-definition:
+  keyword("asm") operator("(") lit-string() operator(")") operator(";")
+
+linkage-specification:
+  keyword("extern") lit-string() declaration
+  keyword("extern") lit-string() operator("{") [declaration-seq] operator("}")
+
+attribute-specifier-seq:
+  attribute-specifier { attribute-specifier }
+
+attribute-specifier:
+  alignment-specifier
+  operator("[") operator("[") attribute-list operator("]") operator("]")
+
+alignment-specifier:
+  keyword("alignas") operator("(") assignment-expression [operator("...")] operator(")")
+  keyword("alignas") operator("(") type-id [operator("...")] operator(")")
+
+attribute-list-entry:
+  attribute [operator("...")]
+
+attribute-list:
+  [attribute-list-entry] { operator(",") [attribute-list-entry] }
+
+attribute:
+  attribute-token [attribute-argument-clause]
+
+attribute-token:
+  attribute-scoped-token
+  identifier()
+
+attribute-scoped-token:
+  attribute-namespace operator("::") identifier()
+
+attribute-namespace:
+  identifier()
+
+attribute-argument-clause:
+  operator("(") balanced-token-seq operator(")")
+
+balanced-token-seq:
+  { balanced-token }
+
+balanced-token:
+  operator("(") balanced-token-seq operator(")")
+  operator("[") balanced-token-seq operator("]")
+  operator("{") balanced-token-seq operator("}")
+  trivially-balanced-token
+
+
+init-declarator-list:
+  init-declarator { operator(",") init-declarator }
+
+init-declarator:
+  declarator [initializer]
+
+declarator:
+  noptr-declarator parameters-and-qualifiers [trailing-return-type]
+  ptr-declarator
+
+ptr-declarator:
+  { ptr-operator } noptr-declarator
+
+noptr-declarator-repeatable:
+  operator("[") [constant-expression] operator("]") [attribute-specifier-seq]
+  parameters-and-qualifiers
+
+noptr-declarator-start:
+  operator("(") ptr-declarator operator(")")
+  declarator-id [attribute-specifier-seq]
+
+noptr-declarator:
+  noptr-declarator-start { noptr-declarator-repeatable }
+
+parameters-and-qualifiers:
+  operator("(") [parameter-declaration-clause] operator(")") [attribute-specifier-seq] [cv-qualifier-seq] [ref-qualifier] [exception-specification]
+
+trailing-return-type:
+  operator("->") trailing-type-specifier-seq [abstract-declarator]
+
+ptr-operator:
+  nested-name-specifier operator("*") [attribute-specifier-seq] [cv-qualifier-seq]
+  operator("&&") [attribute-specifier-seq]
+  operator("&") [attribute-specifier-seq]
+  operator("*") [attribute-specifier-seq] [cv-qualifier]
+
+cv-qualifier-seq:
+  cv_qualifier { cv_qualifier }
+
+cv_qualifier:
+  identifier("volatile")
+  identifier("const")
+
+ref-qualifier:
+  operator("&&")
+  operator("&")
+
+declarator-id:
+  [nested-name-specifier] class-name
+  [operator("...")] id-expression
+
+type-id:
+  type-specifier-seq [abstract-declarator]
+
+abstract-declarator:
+  abstract-pack-declarator
+  [noptr-abstract-declarator] parameters-and-qualifiers trailing-return-type
+  ptr-abstract-declarator
+
+ptr-abstract-declarator:
+  noptr-abstract-declarator
+  ptr-operator { ptr-operator } [noptr-abstract-declarator]
+
+noptr-abstract-declarator-repeatable:
+  operator("[") [constant-expression] operator("]") [attribute-specifier-seq]
+  parameters-and-qualifiers
+
+noptr-abstract-declarator-start:
+  operator("(") ptr-abstract-declarator operator(")")
+
+noptr-abstract-declarator:
+  [noptr-abstract-declarator-start] noptr-abstract-declarator-repeatable { noptr-abstract-declarator-repeatable }
+  noptr-abstract-declarator-start
+
+abstract-pack-declarator:
+  ptr-operator abstract-pack-declarator
+  noptr-abstract-pack-declarator
+
+noptr-abstract-pack-declarator-repeatable:
+  operator("[") [constant-expression] operator("]") [attribute-specifier-seq]
+  parameters-and-qualifiers
+
+noptr-abstract-pack-declarator-start:
+  operator("...")
+
+noptr-abstract-pack-declarator:
+  noptr-abstract-pack-declarator-start { noptr-abstract-pack-declarator-repeatable }
+
+parameter-declaration-clause:
+  parameter-declaration-list operator(",") operator("...")
+  [parameter-declaration-list] [operator("...")]
+
+parameter-declaration-list:
+  parameter-declaration { operator(",") parameter-declaration }
+
+parameter-declaration:
+  [attribute-specifier-seq] decl-specifier-seq declarator operator("=") initializer-clause
+  [attribute-specifier-seq] decl-specifier-seq declarator
+  [attribute-specifier-seq] decl-specifier-seq [abstract-declarator] operator("=") initializer-clause
+  [attribute-specifier-seq] decl-specifier-seq [abstract-declarator]
+
+function-definition:
+  [attribute-specifier-seq] [decl-specifier-seq] declarator [virt-specifier-seq] function-body
+
+function-body:
+  operator("=") operator("delete") operator(";")
+  operator("=") keyword("default") operator(";")
+  function-try-block
+  [ctor-initializer] compound-statement
+
+initializer:
+  operator("(") expression-list operator(")")
+  brace-or-equal-initializer
+
+brace-or-equal-initializer:
+  braced-init-list
+  operator("=") initializer-clause
+
+initializer-clause:
+  braced-init-list
+  assignment-expression
+
+initializer-list:
+  initializer-clause [operator("...")] { operator(",") initializer-clause [operator("...")] }
+
+braced-init-list:
+  operator("{") operator("}")
+  operator("{") initializer-list [operator(",")] operator("}")
+
+
+class-specifier:
+  class-head operator("{") [member-specification] operator("}")
+
+class-head:
+  class-key [attribute-specifier-seq] class-head-name [class-virt-specifier] [base-clause]
+  class-key [attribute-specifier-seq] [base-clause]
+
+class-head-name:
+  [nested-name-specifier] class-name
+
+class-virt-specifier:
+  identifier("final")
+
+class-key:
+  keyword("union")
+  keyword("struct")
+  keyword("class")
+
+member-specification:
+  access-specifier operator(":") [member-specification]
+  member-declaration [member-specification]
+
+member-declaration:
+  alias-declaration
+  template-declaration
+  static_assert-declaration
+  using-declaration
+  function-definition [operator(";")]
+  [attribute-specifier-seq] [decl-specifier-seq] [member-declarator-list] operator(";")
+
+member-declarator-list:
+  member-declarator { operator(",") member-declarator }
+
+member-declarator:
+  [identifier()] [attribute-specifier-seq] operator(":") constant-expression
+  declarator [brace-or-equal-initializer]
+  declarator [virt-specifier-seq] [pure-specifier]
+
+virt-specifier-seq:
+  virt-specifier { virt-specifier }
+
+virt-specifier:
+  identifier("final")
+  identifier("override")
+
+pure-specifier:
+  operator("=") lit-integer(0)
+
+
+base-clause:
+  operator(":") base-specifier-list
+
+base-specifier-list:
+  base-specifier [operator("...")] { operator(",") base-specifier [operator("...")] }
+
+base-specifier:
+  [attribute-specifier-seq] keyword("virtual") [access-specifier] base-type-specifier
+  [attribute-specifier-seq] access-specifier [keyword("virtual")] base-type-specifier
+  [attribute-specifier-seq] base-type-specifier
+
+class-or-decltype:
+  decltype-specifier
+  [nested-name-specifier] class-name
+
+base-type-specifier:
+  class-or-decltype
+
+access-specifier:
+  keyword("public")
+  keyword("protected")
+  keyword("private")
+
+
+conversion-function-id:
+  keyword("operator") conversion-type-id
+
+conversion-type-id:
+  type-specifier-seq [conversion-declarator]
+
+conversion-declarator:
+  ptr-operator [conversion-declarator]
+
+ctor-initializer:
+  operator(":") mem-initializer-list
+
+mem-initializer-list:
+-- That's what it states in the standard, but it's probably bullshit (XXX)
+--  mem-initializer { operator(",") mem-initializer } { operator("...") }
+  mem-initializer [operator("...")] { operator(",") mem-initializer [operator("...")] }
+
+mem-initializer:
+  mem-initializer-id braced-init-list
+  mem-initializer-id operator("(") [expression-list] operator(")")
+
+mem-initializer-id:
+  class-or-decltype
+  identifier()
+
+
+operator-function-id:
+  keyword("operator") overloadable-operator
+
+literal-operator-id:
+  keyword("operator") lit-string("") identifier()
+
+
+template-declaration:
+  keyword("template") operator("<") template-parameter-list operator(">") declaration
+
+template-parameter-list:
+  template-parameter { operator(",") template-parameter }
+
+template-parameter:
+  parameter-declaration
+  type-parameter
+
+type-parameter:
+  keyword("template") operator("<") template-parameter-list operator(">") keyword("class") [identifier()] operator("=") id-expression
+  keyword("template") operator("<") template-parameter-list operator(">") keyword("class") [operator("...")] [identifier()]
+  keyword("typename") [identifier()] operator("=") type-id
+  keyword("typename") [operator("...")] [identifier()]
+  keyword("class") [identifier()] operator("=") type-id
+  keyword("class") [operator("...")] [identifier()]
+
+simple-template-id:
+  template-name operator("<") [template-argument-list] operator(">")
+
+template-id:
+  literal-operator-id operator("<") [template-argument-list] operator(">")
+  operator-function-id operator("<") [template-argument-list] operator(">")
+  simple-template-id
+
+template-argument-list:
+  template-argument [operator("...")] { operator(",") template-argument [operator("...")] }
+
+template-argument:
+  id-expression
+  type-id
+  constant-expression
+
+typename-specifier:
+  keyword("typename") nested-name-specifier [keyword("template")] simple-template-id
+  keyword("typename") nested-name-specifier identifier()
+
+explicit-instantiation:
+  [keyword("extern")] keyword("template") declaration
+
+explicit-specialization:
+  keyword("template") operator("<") operator(">") declaration
+
+
+try-block:
+  keyword("try") compound-statement handler-seq
+
+function-try-block:
+  keyword("try") [ctor-initializer] compound-statement handler-seq
+
+handler-seq:
+  handler { handler }
+
+handler:
+  keyword("catch") operator("(") exception-declaration operator(")") compound-statement
+
+exception-declaration:
+  operator("...")
+  [attribute-specifier-seq] type-specifier-seq declarator
+  [attribute-specifier-seq] type-specifier-seq [abstract-declarator]
+
+throw-expression:
+  keyword("throw") [assignment-expression]
+
+exception-specification:
+  noexcept-specification
+  dynamic-exception-specification
+
+dynamic-exception-specification:
+  keyword("throw") operator("(") [type-id-list] operator(")")
+
+type-id-list:
+  type-id [operator("...")] { operator(",") type-id [operator("...")] }
+
+noexcept-specification:
+  keyword("noexcept") operator("(") constant-expression operator(")")
+  keyword("noexcept")
