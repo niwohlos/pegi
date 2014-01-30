@@ -32,15 +32,15 @@ static inline bool isodigit(char c)
 // for now. Also, const/volatile.
 // false/nullptr/true are technically keywords, but here considered literals.
 // this is technically a keyword, but here considered an identifier.
-static const char *keywords[] = {
+static const char *const keywords[] = {
     "alignas", "alignof", "asm", "break", "case", "catch", "class", "constexpr",
-    "const_cast", "continue", "decltype", "default", "delete", "do",
-    "dynamic_cast", "else", "enum", "explicit", "export", "extern", "for",
-    "friend", "goto", "if", "inline", "mutable", "namespace", "new", "noexcept",
-    "operator", "private", "protected", "public", "register",
-    "reinterpret_cast", "return", "sizeof", "static", "static_assert",
-    "static_cast", "struct", "switch", "template", "thread_local", "throw",
-    "try", "typedef", "typeid", "typename", "union", "using", "virtual", "while"
+    "const_cast", "continue", "decltype", "default", "do", "dynamic_cast",
+    "else", "enum", "explicit", "export", "extern", "for", "friend", "goto",
+    "if", "inline", "mutable", "namespace", "noexcept", "operator", "private",
+    "protected", "public", "register", "reinterpret_cast", "return", "sizeof",
+    "static", "static_assert", "static_cast", "struct", "switch", "template",
+    "thread_local", "throw", "try", "typedef", "typeid", "typename", "union",
+    "using", "virtual", "while"
 };
 
 static inline bool iskeyword(const char *str)
@@ -54,7 +54,7 @@ static inline bool iskeyword(const char *str)
 
 
 // preprocessing-op-or-punc (sorted by reverse length)
-static const char *poops[] = {
+static const char *const poops[] = {
     "delete",
 
     "and_eq", "bitand", "not_eq", "xor_eq",
@@ -63,10 +63,12 @@ static const char *poops[] = {
 
     "%:%:",
 
-    "...", "new", ">>=", "<<=", "->*", "and", "not", "xor",
+    // Due to the template<foo<bar>> stuff, '>>' may not be part of other
+    // operators
+    "...", "new", /*">>=",*/ "<<=", "->*", "and", "not", "xor",
 
     "##", "<:", ":>", "<%", "%>", "%:", "::", ".*", "+=", "-=", "*=", "/=",
-    "%=", "^=", "&=", "|=", "<<", ">>", "==", "!=", "<=", ">=", "&&", "||",
+    "%=", "^=", "&=", "|=", "<<", /*">>",*/ "==", "!=", "<=", ">=", "&&", "||",
     "++", "--", "->", "or",
 
     "{", "}", "[", "]", "#", "(", ")", ";", ":", "?", ".", "+", "-", "*", "/",

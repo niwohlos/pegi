@@ -1,6 +1,8 @@
 #ifndef TOKENIZE_HPP
 #define TOKENIZE_HPP
 
+#include <cstddef>
+
 #include <type_traits>
 #include <vector>
 
