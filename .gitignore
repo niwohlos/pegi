@@ -1,2 +1,6 @@
 *.o
 pegi
+src/parser-enum-names.cpp
+src/parser-sv-handlers.cxx
+src/parser-sv-prototypes.cxx
+include/parser-enum-content.hpp
