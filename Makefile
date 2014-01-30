@@ -12,8 +12,11 @@ all: pegi
 pegi: $(OBJECTS)
 	$(CXX) $^ -o $@ $(LIBS)
 
-%.o: %.cpp
+%.o: %.cpp src/parser-sv-handlers.cxx
 	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+src/parser-sv-handlers.cxx: src/syntax
+	src/create-parser.rb
 
 clean:
 	$(RM) $(OBJECTS) pegi
