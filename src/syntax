@@ -579,7 +579,7 @@ noptr-declarator:
   noptr-declarator-start { noptr-declarator-repeatable }
 
 parameters-and-qualifiers:
-  operator("(") [parameter-declaration-clause] operator(")") [attribute-specifier-seq] [cv-qualifier-seq] [ref-qualifier] [exception-specification]
+  operator("(") parameter-declaration-clause operator(")") [attribute-specifier-seq] [cv-qualifier-seq] [ref-qualifier] [exception-specification]
 
 trailing-return-type:
   operator("->") trailing-type-specifier-seq [abstract-declarator]
