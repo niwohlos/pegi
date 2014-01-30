@@ -9,6 +9,9 @@
 #include "tokenize.hpp"
 #include "translation_limits.hpp"
 
+#ifdef __MACH__
+#define exp10l(x) __exp10(x)
+#endif
 
 static inline bool isnondigit(char c)
 {
