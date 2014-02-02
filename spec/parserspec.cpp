@@ -94,6 +94,31 @@ Describe(parser)
 
         delete[] output;
     }
+
+
+    Spec(ex2)
+    {
+        std::vector<token *> token_list = tokenize(
+            "template<typename T> struct foo\n"
+            "{\n"
+            "    private:\n"
+            "        T bar;\n"
+            "};\n"
+            "foo<int> baz;\n"
+        );
+
+        syntax_tree_node *root = build_syntax_tree(token_list);
+        char *output = dump_syntax_tree_to_buffer(root);
+        delete root;
+        for (token *t: token_list)
+            delete t;
+
+        Assert::That(output, Equals(
+#include "parserspec-ex2-compare.h"
+        ));
+
+        delete[] output;
+    }
 };
 
 #endif
