@@ -3,7 +3,13 @@
 
 svs = Hash.new
 post_hooks = Hash.new
+is_intermediate = Hash.new
 current = nil
+
+def missing_parameter_for(attribute)
+    $stderr.puts("Attribute #{attribute} requires a parameter")
+    exit 1
+end
 
 IO.readlines('src/syntax').each do |line|
     line.strip!
@@ -26,14 +32,20 @@ IO.readlines('src/syntax').each do |line|
 
         svs[current] = Array.new
         spl[1..-1].each do |moar|
-            match = /^([\w-]+)\((\w+)\)$/.match(moar)
-            if !match
-                $stderr.puts("Could not parse attribute #{moar}")
-                exit 1
+            match = /^([\w-]+)\((\w*)\)$/.match(moar)
+            if match
+                attribute = match[1]
+                parameter = match[2].empty? ? nil : match[2]
+            else
+                attribute = moar
+                parameter = nil
             end
-            case match[1]
+            case attribute
             when 'post-hook'
-                post_hooks[current] = match[2]
+                missing_parameter_for 'post-hook' unless parameter
+                post_hooks[current] = parameter
+            when 'intermediate'
+                is_intermediate[current] = true
             else
                 $stderr.puts("Unknown attribute #{match[1]}")
                 exit 1
@@ -102,7 +114,7 @@ File.open('src/parser-sv-handlers.cxx', 'w') do |f|
         f.puts("    if (b == e) return #{sv[0] == '!' ? 'nullptr' : 'b'};")
         #f.puts("    printf(\"Visiting #{sv.sub('!', '')} for token %s\\n\", (*b)->content);")
         f.puts
-        f.puts("    syntax_tree_node *node = new syntax_tree_node(syntax_tree_node::#{const sv}#{sv[0] == '!' ? '' : ', parent'});")
+        f.puts("    syntax_tree_node *node = new syntax_tree_node(syntax_tree_node::#{const sv}, #{sv[0] == '!' ? 'nullptr' : 'parent'}#{is_intermediate[sv] ? ', true' : ''});")
 
         f.puts
         f.puts("    // #{sv.sub('!', '')}:")

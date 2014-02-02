@@ -47,11 +47,11 @@ qualified-id:
   operator("::") identifier()
   nested-name-specifier [keyword("template")] unqualified-id
 
-nested-name-specifier-repeatable:
+nested-name-specifier-repeatable: intermediate
   [keyword("template")] simple-template-id operator("::")
   identifier() operator("::")
 
-nested-name-specifier-start:
+nested-name-specifier-start: intermediate
   decltype-specifier operator("::")
   [operator("::")] namespace-name operator("::")
   [operator("::")] type-name operator("::")
@@ -85,7 +85,7 @@ capture:
 lambda-declarator:
   operator("(") parameter-declaration-clause operator(")") [keyword("mutable")] [exception-specification] [attribute-specifier-seq] [trailing-return-type]
 
-postfix-expression-repeatable:
+postfix-expression-repeatable: intermediate
   operator("--")
   operator("++")
   operator("->") pseudo-destructor-name
@@ -96,7 +96,7 @@ postfix-expression-repeatable:
   operator("[") braced-init-list operator("]")
   operator("[") expression operator("]")
 
-postfix-expression-start:
+postfix-expression-start: intermediate
   keyword("typeid") operator("(") type-id operator(")")
   keyword("typeid") operator("(") expression operator(")")
   keyword("const_cast") operator("<") type-id operator(">") operator("(") expression operator(")")
@@ -567,11 +567,11 @@ declarator:
 ptr-declarator:
   { ptr-operator } noptr-declarator
 
-noptr-declarator-repeatable:
+noptr-declarator-repeatable: intermediate
   operator("[") [constant-expression] operator("]") [attribute-specifier-seq]
   parameters-and-qualifiers
 
-noptr-declarator-start:
+noptr-declarator-start: intermediate
   operator("(") ptr-declarator operator(")")
   declarator-id [attribute-specifier-seq]
 
@@ -617,11 +617,11 @@ ptr-abstract-declarator:
   noptr-abstract-declarator
   ptr-operator { ptr-operator } [noptr-abstract-declarator]
 
-noptr-abstract-declarator-repeatable:
+noptr-abstract-declarator-repeatable: intermediate
   operator("[") [constant-expression] operator("]") [attribute-specifier-seq]
   parameters-and-qualifiers
 
-noptr-abstract-declarator-start:
+noptr-abstract-declarator-start: intermediate
   operator("(") ptr-abstract-declarator operator(")")
 
 noptr-abstract-declarator:
@@ -632,11 +632,11 @@ abstract-pack-declarator:
   ptr-operator abstract-pack-declarator
   noptr-abstract-pack-declarator
 
-noptr-abstract-pack-declarator-repeatable:
+noptr-abstract-pack-declarator-repeatable: intermediate
   operator("[") [constant-expression] operator("]") [attribute-specifier-seq]
   parameters-and-qualifiers
 
-noptr-abstract-pack-declarator-start:
+noptr-abstract-pack-declarator-start: intermediate
   operator("...")
 
 noptr-abstract-pack-declarator:

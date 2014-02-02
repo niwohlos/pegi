@@ -8,8 +8,8 @@
 #include "tokenize.hpp"
 
 
-syntax_tree_node::syntax_tree_node(sv_type t, syntax_tree_node *p):
-    parent(p), type(t)
+syntax_tree_node::syntax_tree_node(sv_type t, syntax_tree_node *p, bool i):
+    parent(p), type(t), intermediate(i)
 {
     if (p)
         p->children.push_back(this);
@@ -54,6 +54,32 @@ syntax_tree_node *syntax_tree_node::compound(void) const
             return n;
 
     return nullptr;
+}
+
+
+void syntax_tree_node::contract(void)
+{
+    auto i = children.begin();
+
+    while (i != children.end())
+    {
+        syntax_tree_node *child = *i;
+
+        child->contract();
+
+        if (!child->intermediate)
+            ++i;
+        else
+        {
+            i = children.erase(i);
+            children.splice(i, child->children);
+            // i now points to the element after the newly adopted grandchildren
+            // (this is correct, as there may be no intermediate nodes among
+            // those due to child->contract() before)
+
+            delete child;
+        }
+    }
 }
 
 
@@ -426,6 +452,8 @@ syntax_tree_node *build_syntax_tree(const std::vector<token *> &token_list)
 {
     maximum_extent = token_list.begin();
     syntax_tree_node *root = sv_translation_unit(token_list.begin(), token_list.end());
+
+    root->contract();
 
     if (maximum_extent != token_list.end())
         fprintf(stderr, "Parse error: %s (%i:%i)\n", (*maximum_extent)->content, (*maximum_extent)->line, (*maximum_extent)->column);

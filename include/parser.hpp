@@ -26,13 +26,15 @@ class syntax_tree_node
         std::list<syntax_tree_node *> children;
         sv_type type;
         token *ass_token;
+        bool intermediate;
 
-        syntax_tree_node(sv_type type, syntax_tree_node *parent = nullptr);
+        syntax_tree_node(sv_type type, syntax_tree_node *parent = nullptr, bool intermediate = false);
         ~syntax_tree_node(void);
 
         void detach(void);
         bool sees(const syntax_tree_node *other) const;
         syntax_tree_node *compound(void) const;
+        void contract(void);
 };
 
 
