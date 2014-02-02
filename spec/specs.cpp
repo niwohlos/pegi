@@ -1,5 +1,6 @@
 #include "igloo/igloo_alt.h"
 #include "tokenizerspec.cpp"
+#include "parserspec.cpp"
 
 
 using namespace igloo;
