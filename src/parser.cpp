@@ -30,28 +30,68 @@ void syntax_tree_node::detach(void)
 }
 
 
+/* FIXME: We have to check whether the other node appeared before this one
+ * beside checking the scope (e.g. through adding line/column information to
+ * every node). Currently, this works without, as this is only used for
+ * declarations as "other" and they are only added when they have been
+ * completely matched - furthermore, the current state of the code is that it
+ * doesn't even consider declarations being wrongly matched and discarding
+ * them later, soooooooo... */
 bool syntax_tree_node::sees(const syntax_tree_node *other) const
 {
     if (!other)
         return true;
 
-    const syntax_tree_node *other_compound = other->compound();
-    if (!other_compound)
+    const syntax_tree_node *other_scope = other->scope();
+    if (!other_scope)
         return true;
 
-    for (const syntax_tree_node *c = compound(); c; c = c->compound())
-        if (c == other_compound)
+    for (const syntax_tree_node *s = scope(); s; s = s->scope())
+        if (s == other_scope)
             return true;
 
     return false;
 }
 
 
-syntax_tree_node *syntax_tree_node::compound(void) const
+/**
+ * Finds the associated scope block, which is one of the following:
+ *   - a compound statement
+ *   - a class specifier
+ */
+syntax_tree_node *syntax_tree_node::scope(void) const
 {
     for (syntax_tree_node *n = parent; n; n = n->parent)
-        if (n->type == syntax_tree_node::COMPOUND_STATEMENT)
+    {
+        if ((n->type == syntax_tree_node::COMPOUND_STATEMENT) || (n->type == syntax_tree_node::CLASS_SPECIFIER))
             return n;
+        else if (n->type == syntax_tree_node::TEMPLATE_DECLARATION)
+        {
+            // If above this there is first a template declaration before any
+            // scope block appears, the appropriate scope is probably the scope
+            // enclosed by the template declaration.
+            return n->scope_below();
+        }
+    }
+
+    return nullptr;
+}
+
+
+/**
+ * Finds the first scope block below this node.
+ */
+syntax_tree_node *syntax_tree_node::scope_below(void) const
+{
+    for (syntax_tree_node *c: children)
+    {
+        if ((c->type == syntax_tree_node::COMPOUND_STATEMENT) || (c->type == syntax_tree_node::CLASS_SPECIFIER))
+            return c;
+
+        syntax_tree_node *sb = c->scope_below();
+        if (sb)
+            return sb;
+    }
 
     return nullptr;
 }

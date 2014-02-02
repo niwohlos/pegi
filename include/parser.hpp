@@ -33,7 +33,8 @@ class syntax_tree_node
 
         void detach(void);
         bool sees(const syntax_tree_node *other) const;
-        syntax_tree_node *compound(void) const;
+        syntax_tree_node *scope(void) const;
+        syntax_tree_node *scope_below(void) const;
         void contract(void);
 };
 
