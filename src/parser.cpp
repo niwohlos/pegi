@@ -1,5 +1,8 @@
+#include <cassert>
 #include <cstdio>
 #include <cstring>
+#include <list>
+#include <vector>
 
 #include "parser.hpp"
 #include "tokenize.hpp"
@@ -27,7 +30,75 @@ void syntax_tree_node::detach(void)
 }
 
 
+struct keyword_entry
+{
+    const char *identifier;
+    syntax_tree_node *declaration;
+};
+
+
+// XXX: Make this into a prefix tree or something
+// new and delete are operators; false, nullptr and true are literals.
+static std::list<keyword_entry> keywords({
+    {"alignas", nullptr}, {"alignof", nullptr}, {"asm", nullptr},
+    {"auto", nullptr}, {"bool", nullptr}, {"break", nullptr}, {"case", nullptr},
+    {"catch", nullptr}, {"char", nullptr}, {"char16_t", nullptr},
+    {"char32_t", nullptr}, {"class", nullptr}, {"const", nullptr},
+    {"constexpr", nullptr}, {"const_cast", nullptr}, {"continue", nullptr},
+    {"decltype", nullptr}, {"default", nullptr}, {"do", nullptr},
+    {"double", nullptr}, {"dynamic_cast", nullptr}, {"else", nullptr},
+    {"enum", nullptr}, {"explicit", nullptr}, {"export", nullptr},
+    {"extern", nullptr}, {"float", nullptr}, {"for", nullptr},
+    {"friend", nullptr}, {"goto", nullptr}, {"if", nullptr},
+    {"inline", nullptr}, {"int", nullptr}, {"long", nullptr},
+    {"mutable", nullptr}, {"namespace", nullptr}, {"noexcept", nullptr},
+    {"operator", nullptr}, {"private", nullptr}, {"protected", nullptr},
+    {"public", nullptr}, {"register", nullptr}, {"reinterpret_cast", nullptr},
+    {"return", nullptr}, {"short", nullptr}, {"signed", nullptr},
+    {"sizeof", nullptr}, {"static", nullptr}, {"static_assert", nullptr},
+    {"static_cast", nullptr}, {"struct", nullptr}, {"switch", nullptr},
+    {"template", nullptr}, {"this", nullptr}, {"thread_local", nullptr},
+    {"throw", nullptr}, {"try", nullptr}, {"typedef", nullptr},
+    {"typeid", nullptr}, {"typename", nullptr}, {"union", nullptr},
+    {"unsigned", nullptr}, {"using", nullptr}, {"virtual", nullptr},
+    {"void", nullptr}, {"volatile", nullptr}, {"wchar_t", nullptr},
+    {"while", nullptr}
+});
+
+
 typedef std::vector<token *>::const_iterator range_t;
+
+
+static bool is_keyword(syntax_tree_node *parent, token *tok, const char *name)
+{
+    (void)parent;
+
+    identifier_token *it = reinterpret_cast<identifier_token *>(tok);
+    if (name && strcmp(it->value, name))
+        return false;
+
+    for (const keyword_entry &kw: keywords)
+        if (!strcmp(it->value, kw.identifier) && parent->sees(kw.declaration))
+            return true;
+
+    return false;
+}
+
+
+static bool is_identifier(syntax_tree_node *parent, token *tok, const char *name)
+{
+    (void)parent;
+
+    identifier_token *it = reinterpret_cast<identifier_token *>(tok);
+    if (name && strcmp(it->value, name))
+        return false;
+
+    for (const keyword_entry &kw: keywords)
+        if (!strcmp(it->value, kw.identifier) && parent->sees(kw.declaration))
+            return false;
+
+    return true;
+}
 
 
 static range_t sv_trivially_balanced_token(syntax_tree_node *parent, range_t b, range_t e)

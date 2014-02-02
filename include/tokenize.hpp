@@ -13,7 +13,6 @@ class token
         enum token_type
         {
             IDENTIFIER,
-            KEYWORD,
             LIT_INTEGER,
             LIT_FLOAT,
             LIT_BOOL,
@@ -39,15 +38,6 @@ class identifier_token:
     public:
         char *value;
         identifier_token(char *c);
-};
-
-
-class keyword_token:
-    public token
-{
-    public:
-        char *value;
-        keyword_token(char *c);
 };
 
 

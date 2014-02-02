@@ -16,7 +16,7 @@ primary-expression:
   lambda-expression
   id-expression
   operator("(") expression operator(")")
-  identifier("this")
+  keyword("this")
   literal
 
 literal:
@@ -78,7 +78,7 @@ capture-list:
   capture [operator("...")] { operator(",") capture [operator("...")] }
 
 capture:
-  identifier("this")
+  keyword("this")
   operator("&") identifier()
   identifier()
 
@@ -264,6 +264,7 @@ constant-expression:
 
 
 statement:
+  labeled-statement
   [attribute-specifier-seq] try-block
   [attribute-specifier-seq] jump-statement
   [attribute-specifier-seq] iteration-statement
@@ -271,7 +272,6 @@ statement:
   [attribute-specifier-seq] compound-statement
   [attribute-specifier-seq] expression-statement
   declaration-statement
-  labeled-statement
 
 labeled-statement:
   [attribute-specifier-seq] keyword("default") operator(":") statement
@@ -407,20 +407,20 @@ trailing-type-specifier-seq:
 
 simple-type-specifier:
   decltype-specifier
-  identifier("auto")
-  identifier("void")
-  identifier("double")
-  identifier("float")
-  identifier("unsigned")
-  identifier("signed")
-  identifier("long")
-  identifier("int")
-  identifier("short")
-  identifier("bool")
-  identifier("wchar_t")
-  identifier("char32_t")
-  identifier("char16_t")
-  identifier("char")
+  keyword("auto")
+  keyword("void")
+  keyword("double")
+  keyword("float")
+  keyword("unsigned")
+  keyword("signed")
+  keyword("long")
+  keyword("int")
+  keyword("short")
+  keyword("bool")
+  keyword("wchar_t")
+  keyword("char32_t")
+  keyword("char16_t")
+  keyword("char")
   nested-name-specifier keyword("template") simple-template-id
   [nested-name-specifier] type-name
 
@@ -594,8 +594,8 @@ cv-qualifier-seq:
   cv_qualifier { cv_qualifier }
 
 cv_qualifier:
-  identifier("volatile")
-  identifier("const")
+  keyword("volatile")
+  keyword("const")
 
 ref-qualifier:
   operator("&&")
@@ -692,7 +692,8 @@ class-head:
   class-key [attribute-specifier-seq] [base-clause]
 
 class-head-name:
-  [nested-name-specifier] class-name
+-- The standard says class-name instead of identifier() here - but we don't know this name yet, sooooo...
+  [nested-name-specifier] identifier()
 
 class-virt-specifier:
   identifier("final")

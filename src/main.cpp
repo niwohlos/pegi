@@ -12,7 +12,6 @@ static void dump_token(token *tok, int spacing)
     switch (tok->type)
     {
         case token::IDENTIFIER:  printf("%-*s %s\n", spacing, "Identifier:", reinterpret_cast<identifier_token *>(tok)->value); break;
-        case token::KEYWORD:     printf("%-*s %s\n", spacing, "Keyword:", reinterpret_cast<keyword_token *>(tok)->value); break;
         case token::LIT_BOOL:    printf("%-*s %s\n", spacing, "Bool literal:", reinterpret_cast<lit_bool_token *>(tok)->value ? "true" : "false"); break;
         case token::LIT_FLOAT:   printf("%-*s %Lg\n", spacing, "Float literal:", reinterpret_cast<lit_float_token *>(tok)->value); break;
         case token::LIT_INTEGER:

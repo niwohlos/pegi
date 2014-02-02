@@ -31,31 +31,6 @@ static inline bool isodigit(char c)
 }
 
 
-// Strictly speaking, types are also keywords. But consider them just literals
-// for now. Also, const/volatile.
-// false/nullptr/true are technically keywords, but here considered literals.
-// this is technically a keyword, but here considered an identifier.
-static const char *const keywords[] = {
-    "alignas", "alignof", "asm", "break", "case", "catch", "class", "constexpr",
-    "const_cast", "continue", "decltype", "default", "do", "dynamic_cast",
-    "else", "enum", "explicit", "export", "extern", "for", "friend", "goto",
-    "if", "inline", "mutable", "namespace", "noexcept", "operator", "private",
-    "protected", "public", "register", "reinterpret_cast", "return", "sizeof",
-    "static", "static_assert", "static_cast", "struct", "switch", "template",
-    "thread_local", "throw", "try", "typedef", "typeid", "typename", "union",
-    "using", "virtual", "while"
-};
-
-static inline bool iskeyword(const char *str)
-{
-    for (const char *keyword: keywords)
-        if (!strcmp(str, keyword))
-            return true;
-
-    return false;
-}
-
-
 // preprocessing-op-or-punc (sorted by reverse length)
 static const char *const poops[] = {
     "delete",
@@ -103,12 +78,6 @@ static inline bool ispoop(const char **c)
 
 identifier_token::identifier_token(char *c):
     token(token::IDENTIFIER, c)
-{
-    value = c;
-}
-
-keyword_token::keyword_token(char *c):
-    token(token::KEYWORD, c)
 {
     value = c;
 }
@@ -479,9 +448,7 @@ std::vector<token *> tokenize(const char *str)
             memcpy(content, start, str - start);
             content[str - start] = 0;
 
-            if (iskeyword(content))
-                t = new keyword_token(content);
-            else if (!strcmp(content, "false") || !strcmp(content, "true"))
+            if (!strcmp(content, "false") || !strcmp(content, "true"))
                 t = new lit_bool_token(content);
             else if (!strcmp(content, "nullptr"))
                 t = new lit_pointer_token(content);

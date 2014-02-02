@@ -146,7 +146,9 @@ File.open('src/parser-sv-handlers.cxx', 'w') do |f|
                     kind = match[1]
                     condition = match[2]
 
-                    if condition.empty?
+                    if kind == 'identifier' || kind == 'keyword'
+                        f.puts("    if ((m != e) && ((*m)->type == token::#{const 'identifier'}) && is_#{var kind}(node, *m, #{condition.empty? ? 'nullptr' : condition}))")
+                    elsif condition.empty?
                         f.puts("    if ((m != e) && ((*m)->type == token::#{const kind}))")
                     elsif condition[0] == '"'
                         f.puts("    if ((m != e) && ((*m)->type == token::#{const kind}) && !strcmp(reinterpret_cast<#{var kind}_token *>(*m)->value, #{condition}))")
