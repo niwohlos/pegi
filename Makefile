@@ -5,6 +5,7 @@ CXXSPECFLAGS = -Wall -Wextra -std=c++11 -Iinclude -Ispec/include
 RM = rm -f
 
 OBJECTS = $(patsubst %.cpp,%.o,$(wildcard src/*.cpp))
+NMOBJECTS = $(subst src/main.o,,$(OBJECTS))
 
 .PHONY: all clean specs
 
@@ -19,8 +20,8 @@ pegi: $(OBJECTS)
 src/parser-sv-handlers.cxx: src/syntax
 	src/create-parser.rb
 
-specs:
-	$(CXX) $(CXXSPECFLAGS) spec/specs.cpp -o spec/specs
+specs: $(NMOBJECTS)
+	$(CXX) $(CXXSPECFLAGS) spec/specs.cpp $^ -o spec/specs
 
 clean:
 	$(RM) $(OBJECTS) pegi
