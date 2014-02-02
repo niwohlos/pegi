@@ -103,7 +103,7 @@ static bool is_identifier(syntax_tree_node *parent, token *tok, const char *name
 
 static range_t sv_trivially_balanced_token(syntax_tree_node *parent, range_t b, range_t e)
 {
-    (void)e;
+    if (b == e) return b;
 
     if ((*b)->type == token::OPERATOR)
     {
@@ -130,7 +130,7 @@ static const char *const overloadable_operators[] = {
 
 static range_t sv_overloadable_operator(syntax_tree_node *parent, range_t b, range_t e)
 {
-    (void)e;
+    if (b == e) return b;
 
     if ((*b)->type != token::OPERATOR)
         return b;
