@@ -388,6 +388,49 @@ static void template_declaration_done(syntax_tree_node *node)
 }
 
 
+// FIXME: Having a match for this doesn't mean anything. We should really be
+// able to revoke such a declaration if necessary.
+static void template_parameter_done(syntax_tree_node *node)
+{
+    // Not really a declaration but lol idc yours clici
+
+    syntax_tree_node *declaration = node;
+    node = node->children.front();
+
+    if (node->type == syntax_tree_node::TYPE_PARAMETER)
+    {
+        const char *identifier = nullptr;
+        // am i doin it rite
+        for (syntax_tree_node *c: node->children)
+        {
+            if ((c->type == syntax_tree_node::TOKEN) &&
+                (c->ass_token->type == token::IDENTIFIER) &&
+                is_identifier(c, c->ass_token, nullptr))
+            {
+                identifier = reinterpret_cast<identifier_token *>(c->ass_token)->value;
+                break;
+            }
+        }
+
+        if (identifier)
+        {
+            if (!strcmp(reinterpret_cast<identifier_token *>(node->children.front()->ass_token)->value, "template"))
+                template_names.push_back({strdup(identifier), declaration});
+            else if (!strcmp(reinterpret_cast<identifier_token *>(node->children.front()->ass_token)->value, "typename"))
+                typedef_names.push_back({strdup(identifier), declaration});
+            else if (!strcmp(reinterpret_cast<identifier_token *>(node->children.front()->ass_token)->value, "class"))
+                class_names.push_back({strdup(identifier), declaration});
+            else
+                throw format("A type parameter must be precedented by template, typename or class. Check the syntax definition file.");
+
+            keywords.push_back({strdup(identifier), declaration});
+        }
+    }
+    else
+        throw format("Unknown template parameter type %s", parser_type_names[node->type]);
+}
+
+
 static range_t sv_typedef_name(syntax_tree_node *parent, range_t b, range_t e)
 {
     if (b == e) return b;

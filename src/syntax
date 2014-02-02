@@ -797,7 +797,7 @@ template-declaration: post-hook(template_declaration_done)
 template-parameter-list:
   template-parameter { operator(",") template-parameter }
 
-template-parameter:
+template-parameter: post-hook(template_parameter_done)
   parameter-declaration
   type-parameter
 
