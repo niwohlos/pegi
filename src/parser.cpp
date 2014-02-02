@@ -30,6 +30,33 @@ void syntax_tree_node::detach(void)
 }
 
 
+bool syntax_tree_node::sees(const syntax_tree_node *other) const
+{
+    if (!other)
+        return true;
+
+    const syntax_tree_node *other_compound = other->compound();
+    if (!other_compound)
+        return true;
+
+    for (const syntax_tree_node *c = compound(); c; c = c->compound())
+        if (c == other_compound)
+            return true;
+
+    return false;
+}
+
+
+syntax_tree_node *syntax_tree_node::compound(void) const
+{
+    for (syntax_tree_node *n = parent; n; n = n->parent)
+        if (n->type == syntax_tree_node::COMPOUND_STATEMENT)
+            return n;
+
+    return nullptr;
+}
+
+
 struct keyword_entry
 {
     const char *identifier;

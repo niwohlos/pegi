@@ -27,6 +27,8 @@ class syntax_tree_node
         ~syntax_tree_node(void);
 
         void detach(void);
+        bool sees(const syntax_tree_node *other) const;
+        syntax_tree_node *compound(void) const;
 };
 
 
