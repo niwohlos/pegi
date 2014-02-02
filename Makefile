@@ -33,4 +33,4 @@ include/parser-enum-content.hpp: src/syntax
 	src/create-parser.rb
 
 clean:
-	$(RM) $(OBJECTS) $(GENERATED) pegi
+	$(RM) $(OBJECTS) $(GENERATED) pegi spec/specs
