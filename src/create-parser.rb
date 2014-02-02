@@ -2,13 +2,17 @@
 # coding: utf-8
 
 svs = Hash.new
+post_hooks = Hash.new
 current = nil
 
 IO.readlines('src/syntax').each do |line|
     line.strip!
     next if line.empty? || line[0..1] == '--'
 
-    if line[-1] == ':'
+    spl = line.split
+
+    if spl[0][-1] == ':'
+        line = spl[0]
         if current
             current = line[0..-2]
         else
@@ -19,7 +23,23 @@ IO.readlines('src/syntax').each do |line|
             $stderr.puts("Syntactic variable #{current} redefined")
             exit 1
         end
+
         svs[current] = Array.new
+        spl[1..-1].each do |moar|
+            match = /^([\w-]+)\((\w+)\)$/.match(moar)
+            if !match
+                $stderr.puts("Could not parse attribute #{moar}")
+                exit 1
+            end
+            case match[1]
+            when 'post-hook'
+                post_hooks[current] = match[2]
+            else
+                $stderr.puts("Unknown attribute #{match[1]}")
+                exit 1
+            end
+        end
+
         next
     end
 
@@ -184,8 +204,16 @@ File.open('src/parser-sv-handlers.cxx', 'w') do |f|
             # If empty, go on (if everything fails, it will be empty anyway)
             if !had_non_optional
                 f.puts('    if (m != b)')
-                f.puts("        return #{sv[0] == '!' ? 'node' : 'm'};")
+                f.puts('    {')
+                if post_hooks[sv]
+                    f.puts("        #{post_hooks[sv]}(node);")
+                    f.puts("        return #{sv[0] == '!' ? 'node' : 'm'};")
+                else
+                    f.puts("        return #{sv[0] == '!' ? 'node' : 'm'};")
+                end
+                f.puts('    }')
             else
+                f.puts("    #{post_hooks[sv]}(node);") if post_hooks[sv]
                 f.puts("    return #{sv[0] == '!' ? 'node' : 'm'};")
             end
 
