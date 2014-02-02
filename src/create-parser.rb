@@ -218,13 +218,8 @@ File.open('src/parser-sv-handlers.cxx', 'w') do |f|
                 f.puts('    if (m != b)')
                 f.puts('    {')
                 f.puts("        if (m > maximum_extent) maximum_extent = m;")
-                if post_hooks[sv]
-                    f.puts("        #{post_hooks[sv]}(node);")
-                    f.puts("        return #{sv[0] == '!' ? 'node' : 'm'};")
-                else
-                    f.puts("        if (m > maximum_extent) maximum_extent = e;")
-                    f.puts("        return #{sv[0] == '!' ? 'node' : 'm'};")
-                end
+                f.puts("        #{post_hooks[sv]}(node);") if post_hooks[sv]
+                f.puts("        return #{sv[0] == '!' ? 'node' : 'm'};")
                 f.puts('    }')
             else
                 f.puts("    if (m > maximum_extent) maximum_extent = m;")
