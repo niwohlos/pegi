@@ -57,6 +57,11 @@ syntax_tree_node *syntax_tree_node::compound(void) const
 }
 
 
+/**
+ * This function moves children of intermediate nodes and nodes which are of the
+ * same type as their parent (i.e., loop through recursion) to their parent and
+ * removes them from the syntax tree.
+ */
 void syntax_tree_node::contract(void)
 {
     auto i = children.begin();
@@ -67,7 +72,7 @@ void syntax_tree_node::contract(void)
 
         child->contract();
 
-        if (!child->intermediate)
+        if (!child->intermediate && (child->type != type))
             ++i;
         else
         {
