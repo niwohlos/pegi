@@ -6,6 +6,7 @@
 #include <ctype.h>
 #include <vector>
 
+#include "format.hpp"
 #include "tokenize.hpp"
 #include "translation_limits.hpp"
 
@@ -119,7 +120,7 @@ retry:
         {
             unsigned long long new_value = value.u * base;
             if (new_value / base != value.u)
-                throw 0;
+                throw format("Unsigned integer literal is too big");
             value.u = new_value;
 
             char d = tolower(*(c++));
@@ -141,7 +142,7 @@ retry:
                 if (base == 10)
                 {
                     // lol no unsigned for you (see below)
-                    throw 0;
+                    throw format("Signed decimal integer literal is too big");
                 }
 
                 is_unsigned = true;
@@ -277,7 +278,7 @@ lit_float_token::lit_float_token(char *c):
     else if (!*c)
         subtype = DOUBLE;
     else
-        throw 0;
+        throw format("Unknown floating point literal suffix %s", c);
 }
 
 lit_bool_token::lit_bool_token(char *c):
@@ -296,10 +297,7 @@ lit_pointer_token::lit_pointer_token(char *c):
 static inline char eseq(const char **seq)
 {
     if (!**seq)
-    {
-        fprintf(stderr, "Expected an escape sequence\n");
-        throw 0;
-    }
+        throw format("Escape sequence is empty");
 
     if (**seq == 'x')
     {
@@ -341,8 +339,7 @@ static inline char eseq(const char **seq)
         case 'v':  return '\v';
     }
 
-    fprintf(stderr, "Invalid escape sequence starting with '%c'\n", **seq);
-    throw 0;
+    throw format("Invalid escape sequence starting with '%c'", **seq);
 }
 
 lit_string_token::lit_string_token(char *c):
@@ -495,7 +492,7 @@ std::vector<token *> tokenize(const char *str)
                     str++;
 
                 if (!isdigit(*str))
-                    throw "Expected a decimal digit as floating point exponent";
+                    throw format("Expected a decimal digit as floating point exponent");
 
                 while (isdigit(*str))
                     str++;
@@ -544,9 +541,11 @@ std::vector<token *> tokenize(const char *str)
                     {
                         eseq(&str);
                     }
-                    catch (int __)
+                    catch (char *msg)
                     {
-                        throw "Invalid escape sequence";
+                        char *reformatted = format("Invalid escape sequence: %s", msg);
+                        delete msg;
+                        throw reformatted;
                     }
                 }
             }
@@ -566,13 +565,15 @@ std::vector<token *> tokenize(const char *str)
                 if (*(str++) == '\\')
                     eseq(&str);
             }
-            catch (int __)
+            catch (char *msg)
             {
-                throw "Invalid escape sequence";
+                char *reformatted = format("Invalid escape sequence: %s", msg);
+                delete msg;
+                throw reformatted;
             }
 
             if (*str != '\'')
-                throw "End of character sequence expected";
+                throw format("End of character sequence expected");
 
             str++;
 
@@ -596,7 +597,7 @@ std::vector<token *> tokenize(const char *str)
                 t = new operator_token(content);
             }
             else
-                throw "Could not parse character";
+                throw format("Could not parse character");
         }
 
         if (t)
@@ -608,9 +609,10 @@ std::vector<token *> tokenize(const char *str)
     }
 
     }
-    catch (const char *msg)
+    catch (char *msg)
     {
         throw_error(str, line_start, line, str - line_start + 1, msg);
+        delete msg;
         for (token *_: ret) { delete _; }
         return std::vector<token *>();
     }
