@@ -1,5 +1,6 @@
 #include <cassert>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <list>
 #include <vector>
@@ -133,36 +134,12 @@ struct keyword_entry
 {
     const char *identifier;
     syntax_tree_node *declaration;
+    bool builtin;
 };
 
 
 // XXX: Make this into a prefix tree or something
-// new and delete are operators; false, nullptr and true are literals.
-static std::list<keyword_entry> keywords({
-    {"alignas", nullptr}, {"alignof", nullptr}, {"asm", nullptr},
-    {"auto", nullptr}, {"bool", nullptr}, {"break", nullptr}, {"case", nullptr},
-    {"catch", nullptr}, {"char", nullptr}, {"char16_t", nullptr},
-    {"char32_t", nullptr}, {"class", nullptr}, {"const", nullptr},
-    {"constexpr", nullptr}, {"const_cast", nullptr}, {"continue", nullptr},
-    {"decltype", nullptr}, {"default", nullptr}, {"do", nullptr},
-    {"double", nullptr}, {"dynamic_cast", nullptr}, {"else", nullptr},
-    {"enum", nullptr}, {"explicit", nullptr}, {"export", nullptr},
-    {"extern", nullptr}, {"float", nullptr}, {"for", nullptr},
-    {"friend", nullptr}, {"goto", nullptr}, {"if", nullptr},
-    {"inline", nullptr}, {"int", nullptr}, {"long", nullptr},
-    {"mutable", nullptr}, {"namespace", nullptr}, {"noexcept", nullptr},
-    {"operator", nullptr}, {"private", nullptr}, {"protected", nullptr},
-    {"public", nullptr}, {"register", nullptr}, {"reinterpret_cast", nullptr},
-    {"return", nullptr}, {"short", nullptr}, {"signed", nullptr},
-    {"sizeof", nullptr}, {"static", nullptr}, {"static_assert", nullptr},
-    {"static_cast", nullptr}, {"struct", nullptr}, {"switch", nullptr},
-    {"template", nullptr}, {"this", nullptr}, {"thread_local", nullptr},
-    {"throw", nullptr}, {"try", nullptr}, {"typedef", nullptr},
-    {"typeid", nullptr}, {"typename", nullptr}, {"union", nullptr},
-    {"unsigned", nullptr}, {"using", nullptr}, {"virtual", nullptr},
-    {"void", nullptr}, {"volatile", nullptr}, {"wchar_t", nullptr},
-    {"while", nullptr}
-});
+static std::list<keyword_entry> keywords;
 
 
 typedef std::vector<token *>::const_iterator range_t;
@@ -298,8 +275,8 @@ static void push_plain_qualified_ids(syntax_tree_node *node, syntax_tree_node *d
             (c->children.front()->type == syntax_tree_node::TOKEN) &&
             (c->children.front()->ass_token->type == token::IDENTIFIER))
         {
-            target->push_back({strdup(reinterpret_cast<identifier_token *>(c->children.front()->ass_token)->value), declaration});
-            keywords.push_back({strdup(reinterpret_cast<identifier_token *>(c->children.front()->ass_token)->value), declaration});
+            target->push_back({strdup(reinterpret_cast<identifier_token *>(c->children.front()->ass_token)->value), declaration, false});
+            keywords.push_back({strdup(reinterpret_cast<identifier_token *>(c->children.front()->ass_token)->value), declaration, false});
         }
         else
             push_plain_qualified_ids(c, declaration, target);
@@ -370,8 +347,8 @@ static void simple_declaration_done(syntax_tree_node *node)
 
             if (tok)
             {
-                class_names.push_back({strdup(tok->value), node->parent->parent});
-                keywords.push_back({strdup(tok->value), node->parent->parent});
+                class_names.push_back({strdup(tok->value), node->parent->parent, false});
+                keywords.push_back({strdup(tok->value), node->parent->parent, false});
             }
         }
     }
@@ -384,7 +361,7 @@ static void template_declaration_done(syntax_tree_node *node)
         if (c->type == syntax_tree_node::DECLARATION)
             for (const keyword_entry &kw: class_names)
                 if (kw.declaration == c)
-                    template_names.push_back({strdup(kw.identifier), node->parent});
+                    template_names.push_back({strdup(kw.identifier), node->parent, false});
 }
 
 
@@ -415,15 +392,15 @@ static void template_parameter_done(syntax_tree_node *node)
         if (identifier)
         {
             if (!strcmp(reinterpret_cast<identifier_token *>(node->children.front()->ass_token)->value, "template"))
-                template_names.push_back({strdup(identifier), declaration});
+                template_names.push_back({strdup(identifier), declaration, false});
             else if (!strcmp(reinterpret_cast<identifier_token *>(node->children.front()->ass_token)->value, "typename"))
-                typedef_names.push_back({strdup(identifier), declaration});
+                typedef_names.push_back({strdup(identifier), declaration, false});
             else if (!strcmp(reinterpret_cast<identifier_token *>(node->children.front()->ass_token)->value, "class"))
-                class_names.push_back({strdup(identifier), declaration});
+                class_names.push_back({strdup(identifier), declaration, false});
             else
                 throw format("A type parameter must be precedented by template, typename or class. Check the syntax definition file.");
 
-            keywords.push_back({strdup(identifier), declaration});
+            keywords.push_back({strdup(identifier), declaration, false});
         }
     }
     else
@@ -541,6 +518,53 @@ syntax_tree_node *build_syntax_tree(const std::vector<token *> &token_list)
 {
     maximum_extent = token_list.begin();
 
+    for (std::list<keyword_entry> *kwl: {&keywords, &typedef_names, &class_names, &template_names})
+    {
+        for (const keyword_entry &kw: *kwl)
+            if (!kw.builtin)
+                free(const_cast<char *>(kw.identifier));
+
+        kwl->clear();
+    }
+
+    // new and delete are operators; false, nullptr and true are literals.
+    keywords = {
+        {"alignas", nullptr, true}, {"alignof", nullptr, true},
+        {"asm", nullptr, true}, {"auto", nullptr, true},
+        {"bool", nullptr, true}, {"break", nullptr, true},
+        {"case", nullptr, true}, {"catch", nullptr, true},
+        {"char", nullptr, true}, {"char16_t", nullptr, true},
+        {"char32_t", nullptr, true}, {"class", nullptr, true},
+        {"const", nullptr, true}, {"constexpr", nullptr, true},
+        {"const_cast", nullptr, true}, {"continue", nullptr, true},
+        {"decltype", nullptr, true}, {"default", nullptr, true},
+        {"do", nullptr, true}, {"double", nullptr, true},
+        {"dynamic_cast", nullptr, true}, {"else", nullptr, true},
+        {"enum", nullptr, true}, {"explicit", nullptr, true},
+        {"export", nullptr, true}, {"extern", nullptr, true},
+        {"float", nullptr, true}, {"for", nullptr, true},
+        {"friend", nullptr, true}, {"goto", nullptr, true},
+        {"if", nullptr, true}, {"inline", nullptr, true},
+        {"int", nullptr, true}, {"long", nullptr, true},
+        {"mutable", nullptr, true}, {"namespace", nullptr, true},
+        {"noexcept", nullptr, true}, {"operator", nullptr, true},
+        {"private", nullptr, true}, {"protected", nullptr, true},
+        {"public", nullptr, true}, {"register", nullptr, true},
+        {"reinterpret_cast", nullptr, true}, {"return", nullptr, true},
+        {"short", nullptr, true}, {"signed", nullptr, true},
+        {"sizeof", nullptr, true}, {"static", nullptr, true},
+        {"static_assert", nullptr, true}, {"static_cast", nullptr, true},
+        {"struct", nullptr, true}, {"switch", nullptr, true},
+        {"template", nullptr, true}, {"this", nullptr, true},
+        {"thread_local", nullptr, true}, {"throw", nullptr, true},
+        {"try", nullptr, true}, {"typedef", nullptr, true},
+        {"typeid", nullptr, true}, {"typename", nullptr, true},
+        {"union", nullptr, true}, {"unsigned", nullptr, true},
+        {"using", nullptr, true}, {"virtual", nullptr, true},
+        {"void", nullptr, true}, {"volatile", nullptr, true},
+        {"wchar_t", nullptr, true}, {"while", nullptr, true}
+    };
+
     syntax_tree_node *root = nullptr;
     try
     {
@@ -553,7 +577,7 @@ syntax_tree_node *build_syntax_tree(const std::vector<token *> &token_list)
     catch (char *msg)
     {
         fprintf(stderr, "%i:%i: %s\n", (*maximum_extent)->line, (*maximum_extent)->column, msg);
-        delete msg;
+        free(msg);
     }
 
     return root;

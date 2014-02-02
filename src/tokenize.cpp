@@ -2,6 +2,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <ctype.h>
 #include <vector>
@@ -612,7 +613,7 @@ std::vector<token *> tokenize(const char *str)
     catch (char *msg)
     {
         throw_error(str, line_start, line, str - line_start + 1, msg);
-        delete msg;
+        free(msg);
         for (token *_: ret) { delete _; }
         return std::vector<token *>();
     }
