@@ -1,5 +1,5 @@
 #include "igloo/igloo_alt.h"
-#include "tokenizerspec.h"
+#include "tokenizerspec.cpp"
 
 
 using namespace igloo;
