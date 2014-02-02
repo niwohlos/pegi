@@ -352,7 +352,7 @@ block-declaration:
 alias-declaration:
   keyword("using") identifier() [attribute-specifier-seq] operator("=") type-id operator(";")
 
-simple-declaration:
+simple-declaration: post-hook(simple_declaration_done)
   attribute-specifier-seq [decl-specifier-seq] init-declarator-list operator(";")
   [decl-specifier-seq] [init-declarator-list] operator(";")
 
@@ -791,7 +791,7 @@ literal-operator-id:
   keyword("operator") lit-string("") identifier()
 
 
-template-declaration:
+template-declaration: post-hook(template_declaration_done)
   keyword("template") operator("<") template-parameter-list operator(">") declaration
 
 template-parameter-list:

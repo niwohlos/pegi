@@ -215,10 +215,123 @@ static range_t sv_overloadable_operator(syntax_tree_node *parent, range_t b, ran
 }
 
 
+std::list<keyword_entry> typedef_names, class_names, template_names;
+
+
+static void push_plain_qualified_ids(syntax_tree_node *node, syntax_tree_node *declaration, std::list<keyword_entry> *target)
+{
+    for (syntax_tree_node *c: node->children)
+    {
+        if ((c->type == syntax_tree_node::UNQUALIFIED_ID) &&
+            (c->children.front()->type == syntax_tree_node::TOKEN) &&
+            (c->children.front()->ass_token->type == token::IDENTIFIER))
+        {
+            target->push_back({strdup(reinterpret_cast<identifier_token *>(c->children.front()->ass_token)->value), declaration});
+            keywords.push_back({strdup(reinterpret_cast<identifier_token *>(c->children.front()->ass_token)->value), declaration});
+        }
+        else
+            push_plain_qualified_ids(c, declaration, target);
+    }
+}
+
+
+static void simple_declaration_done(syntax_tree_node *node)
+{
+    syntax_tree_node *dss = nullptr, *idl = nullptr;
+    for (syntax_tree_node *c: node->children)
+    {
+        if (c->type == syntax_tree_node::DECL_SPECIFIER_SEQ)
+            dss = c;
+        if (c->type == syntax_tree_node::INIT_DECLARATOR_LIST)
+            idl = c;
+    }
+
+    if (dss && idl)
+    {
+        for (syntax_tree_node *c: dss->children)
+        {
+            if ((c->type == syntax_tree_node::DECL_SPECIFIER) &&
+                (c->children.front()->type == syntax_tree_node::TOKEN) &&
+                (c->children.front()->ass_token->type == token::IDENTIFIER) &&
+                !strcmp(reinterpret_cast<identifier_token *>(c->children.front()->ass_token)->value, "typedef"))
+            {
+                // node: simple-declaration
+                // node->parent: block-declaration
+                // node->parent->parent: declaration
+                push_plain_qualified_ids(idl, node->parent->parent, &typedef_names);
+                break;
+            }
+        }
+    }
+    else if (dss)
+    {
+        for (syntax_tree_node *c: dss->children)
+        {
+            if (c->type != syntax_tree_node::DECL_SPECIFIER) continue;
+            if ((c = c->children.front())->type != syntax_tree_node::TYPE_SPECIFIER) continue;
+            c = c->children.front();
+
+            identifier_token *tok = nullptr;
+
+            if (c->type == syntax_tree_node::TRAILING_TYPE_SPECIFIER)
+            {
+                if ((c = c->children.front())->type != syntax_tree_node::ELABORATED_TYPE_SPECIFIER) continue;
+                if (c->children.front()->type != syntax_tree_node::CLASS_KEY) continue;
+                if ((c = c->children.back())->type != syntax_tree_node::TOKEN) continue;
+                if (c->ass_token->type != token::IDENTIFIER) continue;
+                tok = reinterpret_cast<identifier_token *>(c->ass_token);
+            }
+            else if (c->type == syntax_tree_node::CLASS_SPECIFIER)
+            {
+                if ((c = c->children.front())->type != syntax_tree_node::CLASS_HEAD) continue;
+                for (syntax_tree_node *cc: c->children)
+                {
+                    if (cc->type == syntax_tree_node::CLASS_HEAD_NAME)
+                    {
+                        if ((cc = cc->children.back())->type != syntax_tree_node::TOKEN) continue;
+                        if (cc->ass_token->type != token::IDENTIFIER) continue;
+                        tok = reinterpret_cast<identifier_token *>(cc->ass_token);
+                        break;
+                    }
+                }
+            }
+
+            if (tok)
+            {
+                class_names.push_back({strdup(tok->value), node->parent->parent});
+                keywords.push_back({strdup(tok->value), node->parent->parent});
+            }
+        }
+    }
+}
+
+
+static void template_declaration_done(syntax_tree_node *node)
+{
+    for (syntax_tree_node *c: node->children)
+        if (c->type == syntax_tree_node::DECLARATION)
+            for (const keyword_entry &kw: class_names)
+                if (kw.declaration == c)
+                    template_names.push_back({strdup(kw.identifier), node->parent});
+}
+
+
 static range_t sv_typedef_name(syntax_tree_node *parent, range_t b, range_t e)
 {
-    (void)parent;
-    (void)e;
+    if (b == e) return b;
+
+    if ((*b)->type == token::IDENTIFIER)
+    {
+        for (const keyword_entry &typedefd: typedef_names)
+        {
+            if (!strcmp(reinterpret_cast<identifier_token *>(*b)->value, typedefd.identifier) && parent->sees(typedefd.declaration))
+            {
+                syntax_tree_node *node = new syntax_tree_node(syntax_tree_node::TYPEDEF_NAME, parent);
+                (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
+                return ++b;
+            }
+        }
+    }
 
     return b;
 }
@@ -244,8 +357,31 @@ static range_t sv_namespace_alias(syntax_tree_node *parent, range_t b, range_t e
 
 static range_t sv_class_name(syntax_tree_node *parent, range_t b, range_t e)
 {
-    (void)parent;
-    (void)e;
+    if (b == e) return b;
+
+    if ((*b)->type == token::IDENTIFIER)
+    {
+        for (const keyword_entry &cn: class_names)
+        {
+            if (!strcmp(reinterpret_cast<identifier_token *>(*b)->value, cn.identifier) && parent->sees(cn.declaration))
+            {
+                syntax_tree_node *node = new syntax_tree_node(syntax_tree_node::CLASS_NAME, parent);
+                (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
+                return ++b;
+            }
+        }
+
+        // FIXME: Only accept class typedefs here (i.e., resolve typedef)
+        for (const keyword_entry &typedefd: typedef_names)
+        {
+            if (!strcmp(reinterpret_cast<identifier_token *>(*b)->value, typedefd.identifier) && parent->sees(typedefd.declaration))
+            {
+                syntax_tree_node *node = new syntax_tree_node(syntax_tree_node::CLASS_NAME, parent);
+                (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
+                return ++b;
+            }
+        }
+    }
 
     return b;
 }
@@ -262,8 +398,20 @@ static range_t sv_enum_name(syntax_tree_node *parent, range_t b, range_t e)
 
 static range_t sv_template_name(syntax_tree_node *parent, range_t b, range_t e)
 {
-    (void)parent;
-    (void)e;
+    if (b == e) return b;
+
+    if ((*b)->type == token::IDENTIFIER)
+    {
+        for (const keyword_entry &tn: template_names)
+        {
+            if (!strcmp(reinterpret_cast<identifier_token *>(*b)->value, tn.identifier) && parent->sees(tn.declaration))
+            {
+                syntax_tree_node *node = new syntax_tree_node(syntax_tree_node::TEMPLATE_NAME, parent);
+                (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
+                return ++b;
+            }
+        }
+    }
 
     return b;
 }

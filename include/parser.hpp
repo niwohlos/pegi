@@ -16,6 +16,10 @@ class syntax_tree_node
 
             OVERLOADABLE_OPERATOR,
             TRIVIALLY_BALANCED_TOKEN,
+
+            TYPEDEF_NAME,
+            CLASS_NAME,
+            TEMPLATE_NAME,
         };
 
         syntax_tree_node *parent;
