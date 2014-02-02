@@ -6,6 +6,7 @@ RM = rm -f
 
 OBJECTS = $(patsubst %.cpp,%.o,$(wildcard src/*.cpp))
 NMOBJECTS = $(subst src/main.o,,$(OBJECTS))
+GENERATED = $(subst %,src/%,parser-sv-handlers.cxx parser-sv-prototypes.cxx parser-enum-names.cpp) include/parser-enum-content.hpp
 
 .PHONY: all clean specs
 
@@ -24,4 +25,4 @@ specs: $(NMOBJECTS)
 	$(CXX) $(CXXSPECFLAGS) spec/specs.cpp $^ -o spec/specs
 
 clean:
-	$(RM) $(OBJECTS) pegi
+	$(RM) $(OBJECTS) $(GENERATED) pegi
