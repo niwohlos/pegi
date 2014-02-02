@@ -435,7 +435,7 @@ std::vector<token *> tokenize(const char *str)
 
         token *t = NULL;
         const char *start = str;
-        int column = str - line_start;
+        int column = str - line_start + 1;
 
 
         if ((str[0] == '/') && (str[1] == '/'))
