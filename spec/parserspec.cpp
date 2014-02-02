@@ -33,6 +33,25 @@ static int dump_syntax_tree(FILE *fp, syntax_tree_node *node, int indentation)
     return ret;
 }
 
+static char *dump_syntax_tree_to_buffer(syntax_tree_node *root)
+{
+    int fds[2];
+    pipe(fds);
+
+    FILE *ifp = fdopen(fds[1], "w");
+    int sz = dump_syntax_tree(ifp, root, 0);
+    fclose(ifp);
+
+    char *output = new char[sz + 1];
+    read(fds[0], output, sz);
+    output[sz] = 0;
+
+    close(fds[0]);
+    close(fds[1]);
+
+    return output;
+}
+
 
 Describe(parser)
 {
@@ -64,21 +83,10 @@ Describe(parser)
         );
 
         syntax_tree_node *root = build_syntax_tree(token_list);
-
-        int fds[2];
-        pipe(fds);
-
-        FILE *ifp = fdopen(fds[1], "w");
-        int sz = dump_syntax_tree(ifp, root, 0);
-        fclose(ifp);
-
-        char *output = new char[sz + 1];
-        read(fds[0], output, sz);
-        output[sz] = 0;
-
-        close(fds[0]);
-        close(fds[1]);
-
+        char *output = dump_syntax_tree_to_buffer(root);
+        delete root;
+        for (token *t: token_list)
+            delete t;
 
         Assert::That(output, Equals(
 #include "parserspec-ex1-compare.h"
