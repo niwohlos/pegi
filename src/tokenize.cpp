@@ -388,30 +388,24 @@ operator_token::operator_token(char *c):
 }
 
 
-static void throw_error(const char *input, const char *input_start, const char *msg)
+static void throw_error(const char *input, const char *line_start, int line, int column, const char *msg)
 {
-    const char *line_start = input;
-    while ((line_start >= input_start) && (*line_start != '\n'))
-        line_start--;
-    line_start++;
-
     const char *line_end = input;
     while (*line_end && (*line_end != '\n'))
         line_end++;
 
-    char line[line_end - line_start + 1];
-    memcpy(line, line_start, line_end - line_start);
-    line[line_end - line_start] = 0;
+    char full_line[line_end - line_start + 1];
+    memcpy(full_line, line_start, line_end - line_start);
+    full_line[line_end - line_start] = 0;
 
-    fprintf(stderr, "%s\n", line);
+    fprintf(stderr, "%s\n", full_line);
     fprintf(stderr, "%*s^\n", static_cast<int>(input - line_start), "");
-    fprintf(stderr, "%s\n", msg);
+    fprintf(stderr, "%i:%i: %s\n", line, column, msg);
 }
 
 
 std::vector<token *> tokenize(const char *str)
 {
-    const char *original_start = str;
     std::vector<token *> ret;
     const char *line_start = str;
     int line = 1;
@@ -616,7 +610,7 @@ std::vector<token *> tokenize(const char *str)
     }
     catch (const char *msg)
     {
-        throw_error(str, original_start, msg);
+        throw_error(str, line_start, line, str - line_start + 1, msg);
         for (token *_: ret) { delete _; }
         return std::vector<token *>();
     }
