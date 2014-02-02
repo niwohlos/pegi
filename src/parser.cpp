@@ -68,6 +68,8 @@ static std::list<keyword_entry> keywords({
 
 typedef std::vector<token *>::const_iterator range_t;
 
+static range_t maximum_extent;
+
 
 static bool is_keyword(syntax_tree_node *parent, token *tok, const char *name)
 {
@@ -247,5 +249,11 @@ static range_t sv_template_name(syntax_tree_node *parent, range_t b, range_t e)
 
 syntax_tree_node *build_syntax_tree(const std::vector<token *> &token_list)
 {
-    return sv_translation_unit(token_list.begin(), token_list.end());
+    maximum_extent = token_list.begin();
+    syntax_tree_node *root = sv_translation_unit(token_list.begin(), token_list.end());
+
+    if (maximum_extent != token_list.end())
+        fprintf(stderr, "Parse error: %s (%i:%i)\n", (*maximum_extent)->content, (*maximum_extent)->line, (*maximum_extent)->column);
+
+    return root;
 }

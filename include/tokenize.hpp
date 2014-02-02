@@ -25,6 +25,8 @@ class token
 
         token_type type;
         char *content;
+        int line;
+        int column;
 
 
         token(token_type t, char *c): type(t), content(c) {}

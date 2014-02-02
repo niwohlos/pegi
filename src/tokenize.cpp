@@ -413,6 +413,8 @@ std::vector<token *> tokenize(const char *str)
 {
     const char *original_start = str;
     std::vector<token *> ret;
+    const char *line_start = str;
+    int line = 1;
 
     try
     {
@@ -420,13 +422,20 @@ std::vector<token *> tokenize(const char *str)
     while (*str)
     {
         while (*str && isspace(*str))
-            str++;
+        {
+            if (*(str++) == '\n')
+            {
+                line++;
+                line_start = str;
+            }
+        }
 
         if (!*str)
             break;
 
         token *t = NULL;
         const char *start = str;
+        int column = str - line_start;
 
 
         if ((str[0] == '/') && (str[1] == '/'))
@@ -436,7 +445,13 @@ std::vector<token *> tokenize(const char *str)
         {
             str += 2;
             while (*str && ((str[-2] != '*') || (str[-1] != '/')))
-                str++;
+            {
+                if (*(str++) == '\n')
+                {
+                    line++;
+                    line_start = str;
+                }
+            }
         }
         else if (isidentifiernondigit(*str))
         {
@@ -591,8 +606,11 @@ std::vector<token *> tokenize(const char *str)
         }
 
         if (t)
+        {
+            t->line = line;
+            t->column = column;
             ret.push_back(t);
-
+        }
     }
 
     }
