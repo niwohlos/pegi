@@ -178,6 +178,38 @@ Describe(parser)
             delete err;
         }
     }
+
+
+    Spec(ex4)
+    {
+        try
+        {
+            std::vector<token *> token_list = tokenize(
+                "template<bool B, class T = void>\n"
+                "struct enable_if {};\n"
+                "template<class T>\n"
+                "struct enable_if<true, T> { typedef T type; };\n"
+            );
+
+            syntax_tree_node *root = build_syntax_tree(token_list);
+            char *output = dump_syntax_tree_to_buffer(root);
+            delete root;
+            for (token *t: token_list)
+                delete t;
+
+            Assert::That(output, Equals(
+#include "parserspec-ex4-compare.h"
+            ));
+
+            delete[] output;
+        }
+        catch (error *err)
+        {
+            err->emit();
+            Assert::Failure(err->msg);
+            delete err;
+        }
+    }
 };
 
 #endif
