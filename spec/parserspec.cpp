@@ -119,6 +119,37 @@ Describe(parser)
 
         delete[] output;
     }
+
+
+    Spec(ex3)
+    {
+        std::vector<token *> token_list = tokenize(
+            "template<typename T> class a\n"
+            "{\n"
+            "};\n"
+            "template<typename T> class b\n"
+            "{\n"
+            "};\n"
+            "auto foo() -> decltype(new a<b<int>>[42])\n"
+            "{\n"
+            "    int x((4 << 2) >> 3);\n"
+            "    x >>= 1;\n"
+            "    return new a<b<int>>[x];\n"
+            "}\n"
+        );
+
+        syntax_tree_node *root = build_syntax_tree(token_list);
+        char *output = dump_syntax_tree_to_buffer(root);
+        delete root;
+        for (token *t: token_list)
+            delete t;
+
+        Assert::That(output, Equals(
+#include "parserspec-ex3-compare.h"
+        ));
+
+        delete[] output;
+    }
 };
 
 #endif
