@@ -597,23 +597,14 @@ syntax_tree_node *build_syntax_tree(const std::vector<token *> &token_list)
         root->contract();
 
         if (!success || (maximum_extent != token_list.end()))
-        {
-            range_t unmatchable = maximum_extent;
-            ++unmatchable;
-            if (unmatchable == token_list.end())
-                throw format("Unknown matching error");
-            else
-                throw format("Could not match token %s", (*unmatchable)->content);
-        }
+            throw format("Could not match token %s", (*maximum_extent)->content);
     }
     catch (char *msg)
     {
-        range_t unmatchable = maximum_extent;
-        ++unmatchable;
-        if (unmatchable == token_list.end())
+        if (maximum_extent == token_list.end())
             throw new error(msg);
         else
-            throw new error((*unmatchable)->line, (*unmatchable)->column, msg);
+            throw new error((*maximum_extent)->line, (*maximum_extent)->column, msg);
     }
 
     return root;
