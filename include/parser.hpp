@@ -37,6 +37,7 @@ class syntax_tree_node
         syntax_tree_node *scope_below(void) const;
         token *first_token(void) const;
         void contract(void);
+        void fix_right_shifts(void);
 };
 
 

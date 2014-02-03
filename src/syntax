@@ -5,6 +5,8 @@
 --   namespace-alias
 --   original-namespace-name
 --   overloadable-operator
+--   right-shift
+--   right-shift-assignment
 --   template-name
 --   typedef-name
 
@@ -196,7 +198,8 @@ additive-expression:
   multiplicative-expression { additive-operator multiplicative-expression }
 
 shift-operator:
-  operator(">") operator(">")
+-- operator(">>")
+  right-shift
   operator("<<")
 
 shift-expression:
@@ -248,7 +251,8 @@ assignment-operator:
   operator("^=")
   operator("&=")
   operator("<<=")
-  operator(">") operator(">=")
+-- operator(">>=")
+  right-shift-assignment
   operator("-=")
   operator("+=")
   operator("%=")

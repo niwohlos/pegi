@@ -150,6 +150,41 @@ token *syntax_tree_node::first_token(void) const
 }
 
 
+/**
+ * Fixes >> and >>= from > > and > >= (after we're sure it's not > > or > >=).
+ */
+void syntax_tree_node::fix_right_shifts(void)
+{
+    if (type == syntax_tree_node::ASSIGNMENT_OPERATOR)
+    {
+        if (!strcmp(reinterpret_cast<operator_token *>(children.front()->ass_token)->value, ">") &&
+            !strcmp(reinterpret_cast<operator_token *>(children.back ()->ass_token)->value, ">="))
+        {
+            children.pop_back();
+            operator_token *tok = reinterpret_cast<operator_token *>(children.front()->ass_token);
+            delete tok->content;
+
+            strcpy(tok->value = tok->content = new char[4], ">>=");
+        }
+    }
+    else if (type == syntax_tree_node::SHIFT_OPERATOR)
+    {
+        if (!strcmp(reinterpret_cast<operator_token *>(children.front()->ass_token)->value, ">") &&
+            !strcmp(reinterpret_cast<operator_token *>(children.back ()->ass_token)->value, ">"))
+        {
+            children.pop_back();
+            operator_token *tok = reinterpret_cast<operator_token *>(children.front()->ass_token);
+            delete tok->content;
+
+            strcpy(tok->value = tok->content = new char[3], ">>");
+        }
+    }
+    else
+        for (syntax_tree_node *c: children)
+            c->fix_right_shifts();
+}
+
+
 struct keyword_entry
 {
     const char *identifier;
@@ -552,6 +587,59 @@ static range_t sv_template_name(syntax_tree_node *parent, range_t b, range_t e, 
 }
 
 
+static range_t sv_right_shift(syntax_tree_node *parent, range_t b, range_t e, bool *success)
+{
+    range_t m = b;
+
+    if ((m != e) && ((*m)->type == token::OPERATOR) && !strcmp(reinterpret_cast<operator_token *>(*m)->value, ">"))
+    {
+        ++m;
+        if ((m != e) && ((*m)->type == token::OPERATOR) &&
+            ((*m)->line == (*b)->line) && ((*m)->column == (*b)->column + 1) &&
+            !strcmp(reinterpret_cast<operator_token *>(*m)->value, ">"))
+        {
+            // XXX: This is evil. All code normally assumes that every SV
+            // matching function only adds a single child node to the parent.
+            // This is important for removing the correct number of incompletely
+            // matched children after a loop. However, this SV's parent
+            // (shift-operator) is never part of a loop. Therefore, this is
+            // safe.
+            (new syntax_tree_node(syntax_tree_node::TOKEN, parent))->ass_token = *b;
+            (new syntax_tree_node(syntax_tree_node::TOKEN, parent))->ass_token = *m;
+            *success = true;
+            return ++m;
+        }
+    }
+
+    *success = false;
+    return b;
+}
+
+
+static range_t sv_right_shift_assignment(syntax_tree_node *parent, range_t b, range_t e, bool *success)
+{
+    range_t m = b;
+
+    if ((m != e) && ((*m)->type == token::OPERATOR) && !strcmp(reinterpret_cast<operator_token *>(*m)->value, ">"))
+    {
+        ++m;
+        if ((m != e) && ((*m)->type == token::OPERATOR) &&
+            ((*m)->line == (*b)->line) && ((*m)->column == (*b)->column + 1) &&
+            !strcmp(reinterpret_cast<operator_token *>(*m)->value, ">="))
+        {
+            // XXX: See above.
+            (new syntax_tree_node(syntax_tree_node::TOKEN, parent))->ass_token = *b;
+            (new syntax_tree_node(syntax_tree_node::TOKEN, parent))->ass_token = *m;
+            *success = true;
+            return ++m;
+        }
+    }
+
+    *success = false;
+    return b;
+}
+
+
 // God I hate this fucking syntax
 static range_t repair_noptr_declarator(syntax_tree_node *node, range_t b, range_t e, bool *success)
 {
@@ -651,6 +739,7 @@ syntax_tree_node *build_syntax_tree(const std::vector<token *> &token_list)
         bool success;
         root = sv_translation_unit(token_list.begin(), token_list.end(), &success);
         root->contract();
+        root->fix_right_shifts();
 
         if (!success || (maximum_extent != token_list.end()))
             throw format("Could not match token %s", (*maximum_extent)->content);
