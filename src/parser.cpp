@@ -215,6 +215,9 @@ typedef std::vector<token *>::const_iterator range_t;
 static range_t maximum_extent;
 
 
+#include "parser-sv-prototypes.cxx"
+
+
 static bool is_keyword(syntax_tree_node *parent, token *tok, const char *name)
 {
     (void)parent;
@@ -691,8 +694,6 @@ static range_t repair_noptr_declarator(syntax_tree_node *node, range_t b, range_
      * parameters-and-qualifiers. */
 }
 
-
-#include "parser-sv-prototypes.cxx"
 
 #include "parser-sv-handlers.cxx"
 
