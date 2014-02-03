@@ -149,15 +149,18 @@ File.open('src/parser-sv-handlers.cxx', 'w') do |f|
                 if part == '{'
                     f.puts('    {')
                     f.puts('    range_t l;')
+                    f.puts('    int incomplete;')
                     f.puts('    do')
                     f.puts('    {')
                     f.puts('    l = m;')
+                    f.puts('    incomplete = 0;')
                     f.puts
                     in_loop = true
                     next
                 elsif part == '}'
                     in_loop = false
                     f.puts('    } while (l != m);')
+                    f.puts('    for (int i = 0; i < incomplete; i++) { delete node->children.back(); node->children.pop_back(); }')
                     f.puts('    }')
                     next
                 end
@@ -194,11 +197,18 @@ File.open('src/parser-sv-handlers.cxx', 'w') do |f|
                     f.puts('        syntax_tree_node *tok_node = new syntax_tree_node(syntax_tree_node::TOKEN, node);')
                     f.puts('        tok_node->ass_token = *m;')
                     f.puts('        ++m;')
+                    f.puts('        incomplete++;') if in_loop
                     f.puts('    }')
                     f.puts('    else') unless optional
                 else
                     f.puts("    m = sv_#{var part}(node, m, e, &could_parse);")
-                    f.puts('    if (!could_parse)') unless optional
+                    if in_loop
+                        f.puts('    if (could_parse)')
+                        f.puts('        incomplete++;')
+                        f.puts('    else') unless optional
+                    else
+                        f.puts('    if (!could_parse)') unless optional
+                    end
                 end
 
                 if !optional

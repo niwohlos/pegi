@@ -46,7 +46,6 @@
 "                                    id-expression\n"
 "                                      unqualified-id\n"
 "                                        token: Identifier: ( 1:31) format\n"
-"                          token: Operator: ( 1:37) ,\n"
 "                        token: Operator: ( 1:37) ,\n"
 "                        token: Operator: ( 1:39) ...\n"
 "                      token: Operator: ( 1:42) )\n"
