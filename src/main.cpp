@@ -3,6 +3,7 @@
 #include <cstring>
 #include <vector>
 
+#include "error.hpp"
 #include "parser.hpp"
 #include "tokenize.hpp"
 
@@ -71,24 +72,27 @@ int main(int argc, char *argv[])
         buf[len] = 0;
         fclose(fp);
 
-        std::vector<token *> token_list = tokenize(buf);
-        if (token_list.empty())
+        try
         {
-            fprintf(stderr, "%s: Could not tokenize %s\n", argv[0], argv[i]);
+            std::vector<token *> token_list = tokenize(buf);
+
+            for (auto tok: token_list)
+                dump_token(tok, 16);
+
+            syntax_tree_node *root = build_syntax_tree(token_list);
+
+            dump_syntax_tree(root, 0);
+
+            for (auto tok: token_list)
+                delete tok;
+
+            delete[] buf;
+        }
+        catch (error *e)
+        {
+            e->emit(argv[0], argv[1], buf);
             return 1;
         }
-
-        for (auto tok: token_list)
-            dump_token(tok, 16);
-
-        syntax_tree_node *root = build_syntax_tree(token_list);
-
-        dump_syntax_tree(root, 0);
-
-        for (auto tok: token_list)
-            delete tok;
-
-        delete[] buf;
     }
 
     return 0;

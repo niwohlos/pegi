@@ -5,6 +5,7 @@
 #include <list>
 #include <vector>
 
+#include "error.hpp"
 #include "format.hpp"
 #include "parser.hpp"
 #include "tokenize.hpp"
@@ -572,12 +573,23 @@ syntax_tree_node *build_syntax_tree(const std::vector<token *> &token_list)
         root->contract();
 
         if (maximum_extent != token_list.end())
-            throw format("Could not match token %s", (*maximum_extent)->content);
+        {
+            range_t unmatchable = maximum_extent;
+            ++unmatchable;
+            if (unmatchable == token_list.end())
+                throw format("Unknown matching error");
+            else
+                throw format("Could not match token %s", (*unmatchable)->content);
+        }
     }
     catch (char *msg)
     {
-        fprintf(stderr, "%i:%i: %s\n", (*maximum_extent)->line, (*maximum_extent)->column, msg);
-        free(msg);
+        range_t unmatchable = maximum_extent;
+        ++unmatchable;
+        if (unmatchable == token_list.end())
+            throw new error(msg);
+        else
+            throw new error((*unmatchable)->line, (*unmatchable)->column, msg);
     }
 
     return root;

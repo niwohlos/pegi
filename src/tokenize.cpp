@@ -7,6 +7,7 @@
 #include <ctype.h>
 #include <vector>
 
+#include "error.hpp"
 #include "format.hpp"
 #include "tokenize.hpp"
 #include "translation_limits.hpp"
@@ -386,22 +387,6 @@ operator_token::operator_token(char *c):
 }
 
 
-static void throw_error(const char *input, const char *line_start, int line, int column, const char *msg)
-{
-    const char *line_end = input;
-    while (*line_end && (*line_end != '\n'))
-        line_end++;
-
-    char full_line[line_end - line_start + 1];
-    memcpy(full_line, line_start, line_end - line_start);
-    full_line[line_end - line_start] = 0;
-
-    fprintf(stderr, "%s\n", full_line);
-    fprintf(stderr, "%*s^\n", static_cast<int>(input - line_start), "");
-    fprintf(stderr, "%i:%i: %s\n", line, column, msg);
-}
-
-
 std::vector<token *> tokenize(const char *str)
 {
     std::vector<token *> ret;
@@ -612,10 +597,8 @@ std::vector<token *> tokenize(const char *str)
     }
     catch (char *msg)
     {
-        throw_error(str, line_start, line, str - line_start + 1, msg);
-        free(msg);
         for (token *_: ret) { delete _; }
-        return std::vector<token *>();
+        throw new error(line, str - line_start + 1, msg);
     }
 
     return ret;
