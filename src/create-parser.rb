@@ -96,9 +96,9 @@ end
 File.open('src/parser-sv-prototypes.cxx', 'w') do |f|
     svs.each_key do |sv|
         if sv[0] == '!'
-            f.puts("static syntax_tree_node *sv_#{var sv}(range_t b, range_t e);")
+            f.puts("static syntax_tree_node *sv_#{var sv}(range_t b, range_t e, bool *success);")
         else
-            f.puts("static range_t sv_#{var sv}(syntax_tree_node *parent, range_t b, range_t e);")
+            f.puts("static range_t sv_#{var sv}(syntax_tree_node *parent, range_t b, range_t e, bool *success);")
         end
     end
 end
@@ -106,12 +106,12 @@ end
 File.open('src/parser-sv-handlers.cxx', 'w') do |f|
     svs.each_key do |sv|
         if sv[0] == '!'
-            f.puts("static syntax_tree_node *sv_#{var sv}(range_t b, range_t e)")
+            f.puts("static syntax_tree_node *sv_#{var sv}(range_t b, range_t e, bool *success)")
         else
-            f.puts("static range_t sv_#{var sv}(syntax_tree_node *parent, range_t b, range_t e)")
+            f.puts("static range_t sv_#{var sv}(syntax_tree_node *parent, range_t b, range_t e, bool *success)")
         end
         f.puts('{')
-        f.puts("    if (b == e) return #{sv[0] == '!' ? 'nullptr' : 'b'};")
+        f.puts("    bool could_parse;")
         #f.puts("    printf(\"Visiting #{sv.sub('!', '')} for token %s\\n\", (*b)->content);")
         f.puts
         f.puts("    syntax_tree_node *node = new syntax_tree_node(syntax_tree_node::#{const sv}, #{sv[0] == '!' ? 'nullptr' : 'parent'}#{is_intermediate[sv] ? ', true' : ''});")
@@ -125,7 +125,7 @@ File.open('src/parser-sv-handlers.cxx', 'w') do |f|
 
         f.puts
 
-        f.puts('    range_t m = b, n;')
+        f.puts('    range_t m = b;')
 
         i = 0
 
@@ -139,7 +139,6 @@ File.open('src/parser-sv-handlers.cxx', 'w') do |f|
                 f.puts
             end
 
-            had_non_optional = false
             in_loop = false
 
             rule.each do |part|
@@ -165,7 +164,6 @@ File.open('src/parser-sv-handlers.cxx', 'w') do |f|
                     optional = true
                 else
                     optional = false
-                    had_non_optional = true
                 end
 
                 if part.include?('(')
@@ -195,8 +193,8 @@ File.open('src/parser-sv-handlers.cxx', 'w') do |f|
                     f.puts('    }')
                     f.puts('    else') unless optional
                 else
-                    f.puts("    m = sv_#{var part}(node, (n = m), e);")
-                    f.puts('    if (m == n)') unless optional
+                    f.puts("    m = sv_#{var part}(node, m, e, &could_parse);")
+                    f.puts('    if (!could_parse)') unless optional
                 end
 
                 if !optional
@@ -213,19 +211,10 @@ File.open('src/parser-sv-handlers.cxx', 'w') do |f|
                 f.puts
             end
 
-            # If empty, go on (if everything fails, it will be empty anyway)
-            if !had_non_optional
-                f.puts('    if (m != b)')
-                f.puts('    {')
-                f.puts("        if (m > maximum_extent) maximum_extent = m;")
-                f.puts("        #{post_hooks[sv]}(node);") if post_hooks[sv]
-                f.puts("        return #{sv[0] == '!' ? 'node' : 'm'};")
-                f.puts('    }')
-            else
-                f.puts("    if (m > maximum_extent) maximum_extent = m;")
-                f.puts("    #{post_hooks[sv]}(node);") if post_hooks[sv]
-                f.puts("    return #{sv[0] == '!' ? 'node' : 'm'};")
-            end
+            f.puts('    if (m > maximum_extent) maximum_extent = m;')
+            f.puts('    *success = true;')
+            f.puts("    #{post_hooks[sv]}(node);") if post_hooks[sv]
+            f.puts("    return #{sv[0] == '!' ? 'node' : 'm'};")
 
             i += 1
         end
@@ -235,6 +224,7 @@ File.open('src/parser-sv-handlers.cxx', 'w') do |f|
         f.puts("sv_#{var sv}_part_#{i}:")
         f.puts('    node->detach();')
         f.puts('    delete node;')
+        f.puts('    *success = false;')
         f.puts("    return #{sv[0] == '!' ? 'node' : 'b'};")
         f.puts('}')
 

@@ -1,5 +1,6 @@
 CXX ?= g++
-CXXFLAGS = -O3 -Wall -Wextra -Wshadow -Wno-unused-label -std=c++11 -Iinclude -g2
+CXXFLAGS = -O3 -Wall -Wextra -Wshadow -std=c++11 -Iinclude -g2
+CXXPARSFLAGS = $(CXXFLAGS) -Wno-unused-label -Wno-unused-variable
 LIBS = -lm
 CXXSPECFLAGS = -Wall -Wextra -std=c++11 -Iinclude -Ispec/include
 RM = rm -f
@@ -24,6 +25,9 @@ spec/specs: $(NMOBJECTS) $(wildcard spec/*.cpp)
 
 src/%.o: src/%.cpp include/parser-enum-content.hpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+src/parser.o: src/parser.cpp include/parser-enum-content.hpp
+	$(CXX) $(CXXPARSFLAGS) -c $< -o $@
 
 src/parser-sv-handlers.cxx: include/parser-enum-content.hpp
 src/parser-sv-prototypes.cxx: include/parser-enum-content.hpp

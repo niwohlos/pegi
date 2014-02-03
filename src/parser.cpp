@@ -180,9 +180,9 @@ static bool is_identifier(syntax_tree_node *parent, token *tok, const char *name
 }
 
 
-static range_t sv_trivially_balanced_token(syntax_tree_node *parent, range_t b, range_t e)
+static range_t sv_trivially_balanced_token(syntax_tree_node *parent, range_t b, range_t e, bool *success)
 {
-    if (b == e) return b;
+    if (b == e) { *success = false; return b; }
 
     if ((*b)->type == token::OPERATOR)
     {
@@ -190,12 +190,14 @@ static range_t sv_trivially_balanced_token(syntax_tree_node *parent, range_t b, 
         if (!strcmp(tok->value, "(") || !strcmp(tok->value, "[") || !strcmp(tok->value, "{") ||
             !strcmp(tok->value, ")") || !strcmp(tok->value, "]") || !strcmp(tok->value, "}"))
         {
+            *success = false;
             return b;
         }
     }
 
     syntax_tree_node *node = new syntax_tree_node(syntax_tree_node::TRIVIALLY_BALANCED_TOKEN, parent);
     (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
+    *success = true;
     return ++b;
 }
 
@@ -207,12 +209,15 @@ static const char *const overloadable_operators[] = {
     "<=", ">=", "&&", "||", "++", "--", ",", "->*", "->"
 };
 
-static range_t sv_overloadable_operator(syntax_tree_node *parent, range_t b, range_t e)
+static range_t sv_overloadable_operator(syntax_tree_node *parent, range_t b, range_t e, bool *success)
 {
-    if (b == e) return b;
+    if (b == e) { *success = false; return b; }
 
     if ((*b)->type != token::OPERATOR)
+    {
+        *success = false;
         return b;
+    }
 
     operator_token *tok = reinterpret_cast<operator_token *>(*b);
 
@@ -230,6 +235,7 @@ static range_t sv_overloadable_operator(syntax_tree_node *parent, range_t b, ran
                 (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
                 (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *++b;
                 (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *++b;
+                *success = true;
                 return ++b;
             }
         }
@@ -240,7 +246,10 @@ static range_t sv_overloadable_operator(syntax_tree_node *parent, range_t b, ran
 
         ++m;
         if (((*m)->type != token::OPERATOR) || strcmp(reinterpret_cast<operator_token *>(*m)->value, (*tok->value == '(') ? ")" : "]"))
+        {
+            *success = false;
             return b;
+        }
     }
     else
     {
@@ -255,12 +264,16 @@ static range_t sv_overloadable_operator(syntax_tree_node *parent, range_t b, ran
         }
 
         if (!found)
+        {
+            *success = false;
             return b;
+        }
     }
 
 
     syntax_tree_node *node = new syntax_tree_node(syntax_tree_node::OVERLOADABLE_OPERATOR, parent);
     (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
+    *success = true;
     return ++b;
 }
 
@@ -409,9 +422,9 @@ static void template_parameter_done(syntax_tree_node *node)
 }
 
 
-static range_t sv_typedef_name(syntax_tree_node *parent, range_t b, range_t e)
+static range_t sv_typedef_name(syntax_tree_node *parent, range_t b, range_t e, bool *success)
 {
-    if (b == e) return b;
+    if (b == e) { *success = false; return b; }
 
     if ((*b)->type == token::IDENTIFIER)
     {
@@ -421,36 +434,40 @@ static range_t sv_typedef_name(syntax_tree_node *parent, range_t b, range_t e)
             {
                 syntax_tree_node *node = new syntax_tree_node(syntax_tree_node::TYPEDEF_NAME, parent);
                 (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
+                *success = true;
                 return ++b;
             }
         }
     }
 
+    *success = false;
     return b;
 }
 
 
-static range_t sv_original_namespace_name(syntax_tree_node *parent, range_t b, range_t e)
+static range_t sv_original_namespace_name(syntax_tree_node *parent, range_t b, range_t e, bool *success)
 {
     (void)parent;
     (void)e;
 
+    *success = false;
     return b;
 }
 
 
-static range_t sv_namespace_alias(syntax_tree_node *parent, range_t b, range_t e)
+static range_t sv_namespace_alias(syntax_tree_node *parent, range_t b, range_t e, bool *success)
 {
     (void)parent;
     (void)e;
 
+    *success = false;
     return b;
 }
 
 
-static range_t sv_class_name(syntax_tree_node *parent, range_t b, range_t e)
+static range_t sv_class_name(syntax_tree_node *parent, range_t b, range_t e, bool *success)
 {
-    if (b == e) return b;
+    if (b == e) { *success = false; return b; }
 
     if ((*b)->type == token::IDENTIFIER)
     {
@@ -460,6 +477,7 @@ static range_t sv_class_name(syntax_tree_node *parent, range_t b, range_t e)
             {
                 syntax_tree_node *node = new syntax_tree_node(syntax_tree_node::CLASS_NAME, parent);
                 (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
+                *success = true;
                 return ++b;
             }
         }
@@ -471,27 +489,30 @@ static range_t sv_class_name(syntax_tree_node *parent, range_t b, range_t e)
             {
                 syntax_tree_node *node = new syntax_tree_node(syntax_tree_node::CLASS_NAME, parent);
                 (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
+                *success = true;
                 return ++b;
             }
         }
     }
 
+    *success = false;
     return b;
 }
 
 
-static range_t sv_enum_name(syntax_tree_node *parent, range_t b, range_t e)
+static range_t sv_enum_name(syntax_tree_node *parent, range_t b, range_t e, bool *success)
 {
     (void)parent;
     (void)e;
 
+    *success = false;
     return b;
 }
 
 
-static range_t sv_template_name(syntax_tree_node *parent, range_t b, range_t e)
+static range_t sv_template_name(syntax_tree_node *parent, range_t b, range_t e, bool *success)
 {
-    if (b == e) return b;
+    if (b == e) { *success = false; return b; }
 
     if ((*b)->type == token::IDENTIFIER)
     {
@@ -501,11 +522,13 @@ static range_t sv_template_name(syntax_tree_node *parent, range_t b, range_t e)
             {
                 syntax_tree_node *node = new syntax_tree_node(syntax_tree_node::TEMPLATE_NAME, parent);
                 (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
+                *success = true;
                 return ++b;
             }
         }
     }
 
+    *success = false;
     return b;
 }
 
@@ -569,10 +592,11 @@ syntax_tree_node *build_syntax_tree(const std::vector<token *> &token_list)
     syntax_tree_node *root = nullptr;
     try
     {
-        root = sv_translation_unit(token_list.begin(), token_list.end());
+        bool success;
+        root = sv_translation_unit(token_list.begin(), token_list.end(), &success);
         root->contract();
 
-        if (maximum_extent != token_list.end())
+        if (!success || (maximum_extent != token_list.end()))
         {
             range_t unmatchable = maximum_extent;
             ++unmatchable;
