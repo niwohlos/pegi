@@ -64,7 +64,7 @@ static inline bool ispoop(const char **c)
         {
             if (isidentifiernondigit(poop[strlen(poop) - 1]))
             {
-                char next = (*c)[strlen(poop) - 1];
+                char next = (*c)[strlen(poop)];
                 if (isidentifiernondigit(next) || isdigit(next))
                     continue;
             }
@@ -411,7 +411,7 @@ std::vector<token *> tokenize(const char *str)
             break;
 
         token *t = NULL;
-        const char *start = str;
+        const char *start = str, *tmp = str;
         int column = str - line_start + 1;
 
 
@@ -429,6 +429,16 @@ std::vector<token *> tokenize(const char *str)
                     line_start = str;
                 }
             }
+        }
+        else if (ispoop(&tmp))
+        {
+            str = tmp;
+
+            char *content = new char[str - start + 1];
+            memcpy(content, start, str - start);
+            content[str - start] = 0;
+
+            t = new operator_token(content);
         }
         else if (isidentifiernondigit(*str))
         {
@@ -570,21 +580,7 @@ std::vector<token *> tokenize(const char *str)
             t = new lit_char_token(content);
         }
         else
-        {
-            const char *tmp = str;
-            if (ispoop(&tmp))
-            {
-                str = tmp;
-
-                char *content = new char[str - start + 1];
-                memcpy(content, start, str - start);
-                content[str - start] = 0;
-
-                t = new operator_token(content);
-            }
-            else
-                throw format("Could not parse character");
-        }
+            throw format("Could not parse character");
 
         if (t)
         {
