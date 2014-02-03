@@ -60,42 +60,42 @@ Describe(parser)
     {
         try
         {
-        std::vector<token *> token_list = tokenize(
-            "extern int printf(const char *format, ...);\n"
-            "class b;\n"
-            "class c\n"
-            "{\n"
-            "};\n"
-            "template<typename T> class d\n"
-            "{\n"
-            "};\n"
-            "int main(int argc, char *argv[])\n"
-            "{\n"
-            "    typedef int a;\n"
-            "    (void)argc;\n"
-            "    (void)argv; // some wild comment & other 1337 stuff\n"
-            "    a i;\n"
-            "    b/**/*j = nullptr;\n"
-            "    c k;\n"
-            "    /*\n"
-            "     * a multi-line comment\n"
-            "     */ d<c> m;\n"
-            "    printf(\"ohai wurld %g %g %llu %llu %Lg\", 3.25f, 0x2a.42p2, 42LLU, 42ull, -0.e-3l);\n"
-            "    return 0;\n"
-            "}\n"
-        );
+            std::vector<token *> token_list = tokenize(
+                "extern int printf(const char *format, ...);\n"
+                "class b;\n"
+                "class c\n"
+                "{\n"
+                "};\n"
+                "template<typename T> class d\n"
+                "{\n"
+                "};\n"
+                "int main(int argc, char *argv[])\n"
+                "{\n"
+                "    typedef int a;\n"
+                "    (void)argc;\n"
+                "    (void)argv; // some wild comment & other 1337 stuff\n"
+                "    a i;\n"
+                "    b/**/*j = nullptr;\n"
+                "    c k;\n"
+                "    /*\n"
+                "     * a multi-line comment\n"
+                "     */ d<c> m;\n"
+                "    printf(\"ohai wurld %g %g %llu %llu %Lg\", 3.25f, 0x2a.42p2, 42LLU, 42ull, -0.e-3l);\n"
+                "    return 0;\n"
+                "}\n"
+            );
 
-        syntax_tree_node *root = build_syntax_tree(token_list);
-        char *output = dump_syntax_tree_to_buffer(root);
-        delete root;
-        for (token *t: token_list)
-            delete t;
+            syntax_tree_node *root = build_syntax_tree(token_list);
+            char *output = dump_syntax_tree_to_buffer(root);
+            delete root;
+            for (token *t: token_list)
+                delete t;
 
-        Assert::That(output, Equals(
+            Assert::That(output, Equals(
 #include "parserspec-ex1-compare.h"
-        ));
+            ));
 
-        delete[] output;
+            delete[] output;
         }
         catch (error *err)
         {
@@ -110,26 +110,26 @@ Describe(parser)
     {
         try
         {
-        std::vector<token *> token_list = tokenize(
-            "template<typename T> struct foo\n"
-            "{\n"
-            "    private:\n"
-            "        T bar;\n"
-            "};\n"
-            "foo<int> baz;\n"
-        );
+            std::vector<token *> token_list = tokenize(
+                "template<typename T> struct foo\n"
+                "{\n"
+                "    private:\n"
+                "        T bar;\n"
+                "};\n"
+                "foo<int> baz;\n"
+            );
 
-        syntax_tree_node *root = build_syntax_tree(token_list);
-        char *output = dump_syntax_tree_to_buffer(root);
-        delete root;
-        for (token *t: token_list)
-            delete t;
+            syntax_tree_node *root = build_syntax_tree(token_list);
+            char *output = dump_syntax_tree_to_buffer(root);
+            delete root;
+            for (token *t: token_list)
+                delete t;
 
-        Assert::That(output, Equals(
+            Assert::That(output, Equals(
 #include "parserspec-ex2-compare.h"
-        ));
+            ));
 
-        delete[] output;
+            delete[] output;
         }
         catch (error *err)
         {
@@ -144,32 +144,32 @@ Describe(parser)
     {
         try
         {
-        std::vector<token *> token_list = tokenize(
-            "template<typename T> class a\n"
-            "{\n"
-            "};\n"
-            "template<typename T> class b\n"
-            "{\n"
-            "};\n"
-            "auto foo() -> decltype(new a<b<int>>[42])\n"
-            "{\n"
-            "    int x((4 << 2) >> 3);\n"
-            "    x >>= 1;\n"
-            "    return new a<b<int>>[x];\n"
-            "}\n"
-        );
+            std::vector<token *> token_list = tokenize(
+                "template<typename T> class a\n"
+                "{\n"
+                "};\n"
+                "template<typename T> class b\n"
+                "{\n"
+                "};\n"
+                "auto foo() -> decltype(new a<b<int>>[42])\n"
+                "{\n"
+                "    int x((4 << 2) >> 3);\n"
+                "    x >>= 1;\n"
+                "    return new a<b<int>>[x];\n"
+                "}\n"
+            );
 
-        syntax_tree_node *root = build_syntax_tree(token_list);
-        char *output = dump_syntax_tree_to_buffer(root);
-        delete root;
-        for (token *t: token_list)
-            delete t;
+            syntax_tree_node *root = build_syntax_tree(token_list);
+            char *output = dump_syntax_tree_to_buffer(root);
+            delete root;
+            for (token *t: token_list)
+                delete t;
 
-        Assert::That(output, Equals(
+            Assert::That(output, Equals(
 #include "parserspec-ex3-compare.h"
-        ));
+            ));
 
-        delete[] output;
+            delete[] output;
         }
         catch (error *err)
         {

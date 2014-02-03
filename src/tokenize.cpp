@@ -395,33 +395,9 @@ std::vector<token *> tokenize(const char *str)
 
     try
     {
-
-    while (*str)
-    {
-        while (*str && isspace(*str))
+        while (*str)
         {
-            if (*(str++) == '\n')
-            {
-                line++;
-                line_start = str;
-            }
-        }
-
-        if (!*str)
-            break;
-
-        token *t = NULL;
-        const char *start = str, *tmp = str;
-        int column = str - line_start + 1;
-
-
-        if ((str[0] == '/') && (str[1] == '/'))
-            while (*str && (*str != '\n'))
-                str++;
-        else if ((str[0] == '/') && (str[1] == '*'))
-        {
-            str += 2;
-            while (*str && ((str[-2] != '*') || (str[-1] != '/')))
+            while (*str && isspace(*str))
             {
                 if (*(str++) == '\n')
                 {
@@ -429,167 +405,189 @@ std::vector<token *> tokenize(const char *str)
                     line_start = str;
                 }
             }
-        }
-        else if (ispoop(&tmp))
-        {
-            str = tmp;
 
-            char *content = new char[str - start + 1];
-            memcpy(content, start, str - start);
-            content[str - start] = 0;
+            if (!*str)
+                break;
 
-            t = new operator_token(content);
-        }
-        else if (isidentifiernondigit(*str))
-        {
-            do
-                str++;
-            while (isidentifiernondigit(*str) || isdigit(*str));
+            token *t = NULL;
+            const char *start = str, *tmp = str;
+            int column = str - line_start + 1;
 
-            char *content = new char[str - start + 1];
-            memcpy(content, start, str - start);
-            content[str - start] = 0;
 
-            if (!strcmp(content, "false") || !strcmp(content, "true"))
-                t = new lit_bool_token(content);
-            else if (!strcmp(content, "nullptr"))
-                t = new lit_pointer_token(content);
-            else
-                t = new identifier_token(content);
-        }
-        else if (isdigit(*str) || ((str[0] == '.') && isdigit(str[1])))
-        {
-            bool is_float = (*str == '.');
-            bool is_hex = false;
-
-            if (*str != '0')
-                while (isdigit(*++str));
-            else if (!is_float && (tolower(*(++str)) != 'x'))
-                while (isodigit(*str))
+            if ((str[0] == '/') && (str[1] == '/'))
+                while (*str && (*str != '\n'))
                     str++;
-            else
+            else if ((str[0] == '/') && (str[1] == '*'))
             {
-                is_hex = true;
-                while (isxdigit(*++str));
-            }
-
-            if (*str == '.')
-            {
-                is_float = true;
-                while ((is_hex ? isxdigit : isdigit)(*++str));
-            }
-
-            if (is_float &&
-                ((is_hex && (tolower(*str) == 'p')) ||
-                (!is_hex && (tolower(*str) == 'e'))))
-            {
-                str++;
-                if ((*str == '-') || (*str == '+'))
-                    str++;
-
-                if (!isdigit(*str))
-                    throw format("Expected a decimal digit as floating point exponent");
-
-                while (isdigit(*str))
-                    str++;
-            }
-
-            if (is_float)
-            {
-                if ((tolower(*str) == 'f') || (tolower(*str) == 'l'))
-                    str++;
-            }
-            else
-            {
-                bool had_unsigned = false;
-
-                if (tolower(*str) == 'u')
+                str += 2;
+                while (*str && ((str[-2] != '*') || (str[-1] != '/')))
                 {
-                    had_unsigned = true;
+                    if (*(str++) == '\n')
+                    {
+                        line++;
+                        line_start = str;
+                    }
+                }
+            }
+            else if (ispoop(&tmp))
+            {
+                str = tmp;
+
+                char *content = new char[str - start + 1];
+                memcpy(content, start, str - start);
+                content[str - start] = 0;
+
+                t = new operator_token(content);
+            }
+            else if (isidentifiernondigit(*str))
+            {
+                do
                     str++;
+                while (isidentifiernondigit(*str) || isdigit(*str));
+
+                char *content = new char[str - start + 1];
+                memcpy(content, start, str - start);
+                content[str - start] = 0;
+
+                if (!strcmp(content, "false") || !strcmp(content, "true"))
+                    t = new lit_bool_token(content);
+                else if (!strcmp(content, "nullptr"))
+                    t = new lit_pointer_token(content);
+                else
+                    t = new identifier_token(content);
+            }
+            else if (isdigit(*str) || ((str[0] == '.') && isdigit(str[1])))
+            {
+                bool is_float = (*str == '.');
+                bool is_hex = false;
+
+                if (*str != '0')
+                    while (isdigit(*++str));
+                else if (!is_float && (tolower(*(++str)) != 'x'))
+                    while (isodigit(*str))
+                        str++;
+                else
+                {
+                    is_hex = true;
+                    while (isxdigit(*++str));
                 }
 
-                if (tolower(*str) == 'l')
-                    if (tolower(*++str) == 'l')
+                if (*str == '.')
+                {
+                    is_float = true;
+                    while ((is_hex ? isxdigit : isdigit)(*++str));
+                }
+
+                if (is_float &&
+                    ((is_hex && (tolower(*str) == 'p')) ||
+                    (!is_hex && (tolower(*str) == 'e'))))
+                {
+                    str++;
+                    if ((*str == '-') || (*str == '+'))
                         str++;
 
-                if ((tolower(*str) == 'u') && !had_unsigned)
-                    str++;
-            }
+                    if (!isdigit(*str))
+                        throw format("Expected a decimal digit as floating point exponent");
 
-            char *content = new char[str - start + 1];
-            memcpy(content, start, str - start);
-            content[str - start] = 0;
-
-            if (is_float)
-                t = new lit_float_token(content);
-            else
-                t = new lit_integer_token(content);
-        }
-        else if (*str == '"')
-        {
-            str++;
-            while (*str && (*str != '"'))
-            {
-                if ((*(str++) == '\\'))
-                {
-                    try
-                    {
-                        eseq(&str);
-                    }
-                    catch (char *msg)
-                    {
-                        char *reformatted = format("Invalid escape sequence: %s", msg);
-                        delete msg;
-                        throw reformatted;
-                    }
+                    while (isdigit(*str))
+                        str++;
                 }
+
+                if (is_float)
+                {
+                    if ((tolower(*str) == 'f') || (tolower(*str) == 'l'))
+                        str++;
+                }
+                else
+                {
+                    bool had_unsigned = false;
+
+                    if (tolower(*str) == 'u')
+                    {
+                        had_unsigned = true;
+                        str++;
+                    }
+
+                    if (tolower(*str) == 'l')
+                        if (tolower(*++str) == 'l')
+                            str++;
+
+                    if ((tolower(*str) == 'u') && !had_unsigned)
+                        str++;
+                }
+
+                char *content = new char[str - start + 1];
+                memcpy(content, start, str - start);
+                content[str - start] = 0;
+
+                if (is_float)
+                    t = new lit_float_token(content);
+                else
+                    t = new lit_integer_token(content);
             }
-            str++;
-
-            char *content = new char[str - start + 1];
-            memcpy(content, start, str - start);
-            content[str - start] = 0;
-
-            t = new lit_string_token(content);
-        }
-        else if (*str == '\'')
-        {
-            try
+            else if (*str == '"')
             {
                 str++;
-                if (*(str++) == '\\')
-                    eseq(&str);
+                while (*str && (*str != '"'))
+                {
+                    if ((*(str++) == '\\'))
+                    {
+                        try
+                        {
+                            eseq(&str);
+                        }
+                        catch (char *msg)
+                        {
+                            char *reformatted = format("Invalid escape sequence: %s", msg);
+                            delete msg;
+                            throw reformatted;
+                        }
+                    }
+                }
+                str++;
+
+                char *content = new char[str - start + 1];
+                memcpy(content, start, str - start);
+                content[str - start] = 0;
+
+                t = new lit_string_token(content);
             }
-            catch (char *msg)
+            else if (*str == '\'')
             {
-                char *reformatted = format("Invalid escape sequence: %s", msg);
-                delete msg;
-                throw reformatted;
+                try
+                {
+                    str++;
+                    if (*(str++) == '\\')
+                        eseq(&str);
+                }
+                catch (char *msg)
+                {
+                    char *reformatted = format("Invalid escape sequence: %s", msg);
+                    delete msg;
+                    throw reformatted;
+                }
+
+                if (*str != '\'')
+                    throw format("End of character sequence expected");
+
+                str++;
+
+                char *content = new char[str - start + 1];
+                memcpy(content, start, str - start);
+                content[str - start] = 0;
+
+                t = new lit_char_token(content);
             }
+            else
+                throw format("Could not parse character");
 
-            if (*str != '\'')
-                throw format("End of character sequence expected");
-
-            str++;
-
-            char *content = new char[str - start + 1];
-            memcpy(content, start, str - start);
-            content[str - start] = 0;
-
-            t = new lit_char_token(content);
+            if (t)
+            {
+                t->line = line;
+                t->column = column;
+                ret.push_back(t);
+            }
         }
-        else
-            throw format("Could not parse character");
-
-        if (t)
-        {
-            t->line = line;
-            t->column = column;
-            ret.push_back(t);
-        }
-    }
-
     }
     catch (char *msg)
     {
