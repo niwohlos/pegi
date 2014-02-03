@@ -802,8 +802,8 @@ template-parameter-list:
   template-parameter { operator(",") template-parameter }
 
 template-parameter: post-hook(template_parameter_done)
-  parameter-declaration
   type-parameter
+  parameter-declaration
 
 type-parameter:
   keyword("template") operator("<") template-parameter-list operator(">") keyword("class") [identifier()] operator("=") id-expression
