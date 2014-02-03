@@ -12,6 +12,7 @@ class error
         ~error(void);
 
         void emit(const char *prg, const char *tu, const char *source) const;
+        void emit(void) const;
 };
 
 #endif

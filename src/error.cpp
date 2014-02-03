@@ -47,3 +47,9 @@ void error::emit(const char *prg, const char *tu, const char *source) const
 
     fprintf(stderr, "%s\n%*c\n", error_line, column, '^');
 }
+
+
+void error::emit(void) const
+{
+    fprintf(stderr, "%i:%i: %s\n", line, column, msg);
+}

@@ -1,6 +1,7 @@
 #ifndef _PARSERSPEC_H
 #define _PARSERSPEC_H
 
+#include "error.hpp"
 #include "parser.hpp"
 #include "tokenize.hpp"
 #include "igloo/igloo.h"
@@ -57,6 +58,8 @@ Describe(parser)
 {
     Spec(ex1)
     {
+        try
+        {
         std::vector<token *> token_list = tokenize(
             "extern int printf(const char *format, ...);\n"
             "class b;\n"
@@ -93,11 +96,20 @@ Describe(parser)
         ));
 
         delete[] output;
+        }
+        catch (error *err)
+        {
+            err->emit();
+            Assert::Failure(err->msg);
+            delete err;
+        }
     }
 
 
     Spec(ex2)
     {
+        try
+        {
         std::vector<token *> token_list = tokenize(
             "template<typename T> struct foo\n"
             "{\n"
@@ -118,11 +130,20 @@ Describe(parser)
         ));
 
         delete[] output;
+        }
+        catch (error *err)
+        {
+            err->emit();
+            Assert::Failure(err->msg);
+            delete err;
+        }
     }
 
 
     Spec(ex3)
     {
+        try
+        {
         std::vector<token *> token_list = tokenize(
             "template<typename T> class a\n"
             "{\n"
@@ -149,6 +170,13 @@ Describe(parser)
         ));
 
         delete[] output;
+        }
+        catch (error *err)
+        {
+            err->emit();
+            Assert::Failure(err->msg);
+            delete err;
+        }
     }
 };
 

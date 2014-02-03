@@ -1,6 +1,7 @@
 #ifndef _TOKENIZERSPEC_H
 #define _TOKENIZERSPEC_H
 
+#include "error.hpp"
 #include "tokenize.hpp"
 #include "igloo/igloo.h"
 
@@ -37,6 +38,8 @@ Describe(tokenizer)
 {
     Spec(ex1)
     {
+        try
+        {
         std::vector<token *> token_list = tokenize(
             "extern int printf(const char *format, ...);\n"
             "class b;\n"
@@ -179,6 +182,13 @@ Describe(tokenizer)
         ));
 
         delete[] output;
+        }
+        catch (error *err)
+        {
+            err->emit();
+            Assert::Failure(err->msg);
+            delete err;
+        }
     }
 };
 
