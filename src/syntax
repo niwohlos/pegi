@@ -561,7 +561,7 @@ init-declarator:
   declarator [initializer]
 
 declarator:
-  noptr-declarator parameters-and-qualifiers [trailing-return-type]
+  noptr-declarator parameters-and-qualifiers trailing-return-type
   ptr-declarator
 
 ptr-declarator:
