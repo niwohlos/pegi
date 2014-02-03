@@ -49,7 +49,7 @@ bool syntax_tree_node::sees(const syntax_tree_node *other) const
     if (!other_scope)
         return true;
 
-    for (const syntax_tree_node *s = scope(); s; s = s->scope())
+    for (const syntax_tree_node *s = scope(); s; s = s->scope_above())
         if (s == other_scope)
             return true;
 
@@ -76,6 +76,19 @@ syntax_tree_node *syntax_tree_node::scope(void) const
             return n->scope_below();
         }
     }
+
+    return nullptr;
+}
+
+
+/**
+ * Finds the first scope block above this node.
+ */
+syntax_tree_node *syntax_tree_node::scope_above(void) const
+{
+    for (syntax_tree_node *n = parent; n; n = n->parent)
+        if ((n->type == syntax_tree_node::COMPOUND_STATEMENT) || (n->type == syntax_tree_node::CLASS_SPECIFIER))
+            return n;
 
     return nullptr;
 }
@@ -471,7 +484,9 @@ static void template_parameter_done(syntax_tree_node *node)
             keywords.push_back({strdup(identifier), declaration, false});
         }
     }
-    else
+    // Nothing to do for parameter-declaration, since this only introduces a
+    // "variable" (a paramter) rather than a new type name
+    else if (node->type != syntax_tree_node::PARAMETER_DECLARATION)
         throw format("Unknown template parameter type %s", parser_type_names[node->type]);
 }
 
