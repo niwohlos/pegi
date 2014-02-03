@@ -421,6 +421,7 @@ static void simple_declaration_done(syntax_tree_node *node)
                 {
                     if (cc->type == syntax_tree_node::CLASS_HEAD_NAME)
                     {
+                        if ((cc = cc->children.back())->type != syntax_tree_node::CLASS_NAME) continue;
                         if ((cc = cc->children.back())->type != syntax_tree_node::TOKEN) continue;
                         if (cc->ass_token->type != token::IDENTIFIER) continue;
                         tok = reinterpret_cast<identifier_token *>(cc->ass_token);
@@ -554,6 +555,21 @@ static range_t sv_class_name(syntax_tree_node *parent, range_t b, range_t e, boo
 
     if ((*b)->type == token::IDENTIFIER)
     {
+        if (parent->type == syntax_tree_node::CLASS_HEAD_NAME)
+        {
+            // In this very special case we are in fact introducing a new
+            // class-name. Therefore, accept both simple-template-ids (for
+            // partial specialization etc.) and any identifier in general.
+            // However, they have to be true identifiers (no keywords).
+
+            if (is_identifier(parent, *b, nullptr))
+            {
+                (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
+                *success = true;
+                return ++b;
+            }
+        }
+
         for (const keyword_entry &cn: class_names)
         {
             if (!strcmp(reinterpret_cast<identifier_token *>(*b)->value, cn.identifier) && parent->sees(cn.declaration))
@@ -575,6 +591,9 @@ static range_t sv_class_name(syntax_tree_node *parent, range_t b, range_t e, boo
             }
         }
     }
+
+    node->detach();
+    delete node;
 
     *success = false;
     return b;

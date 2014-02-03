@@ -696,8 +696,7 @@ class-head:
   class-key [attribute-specifier-seq] [base-clause]
 
 class-head-name:
--- The standard says class-name instead of identifier() here - but we don't know this name yet, sooooo...
-  [nested-name-specifier] identifier()
+  [nested-name-specifier] class-name
 
 class-virt-specifier:
   identifier("final")
