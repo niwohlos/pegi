@@ -575,7 +575,7 @@ noptr-declarator-start: intermediate
   operator("(") ptr-declarator operator(")")
   declarator-id [attribute-specifier-seq]
 
-noptr-declarator:
+noptr-declarator: post-modify(repair_noptr_declarator)
   noptr-declarator-start { noptr-declarator-repeatable }
 
 parameters-and-qualifiers:

@@ -35,6 +35,7 @@ class syntax_tree_node
         bool sees(const syntax_tree_node *other) const;
         syntax_tree_node *scope(void) const;
         syntax_tree_node *scope_below(void) const;
+        token *first_token(void) const;
         void contract(void);
 };
 

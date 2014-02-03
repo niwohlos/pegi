@@ -3,6 +3,7 @@
 
 svs = Hash.new
 post_hooks = Hash.new
+post_modify = Hash.new
 is_intermediate = Hash.new
 current = nil
 
@@ -46,6 +47,9 @@ IO.readlines('src/syntax').each do |line|
                 post_hooks[current] = parameter
             when 'intermediate'
                 is_intermediate[current] = true
+            when 'post-modify'
+                missing_parameter_for 'post-modify' unless parameter
+                post_modify[current] = parameter
             else
                 $stderr.puts("Unknown attribute #{match[1]}")
                 exit 1
@@ -112,7 +116,7 @@ File.open('src/parser-sv-handlers.cxx', 'w') do |f|
         end
         f.puts('{')
         f.puts("    bool could_parse;")
-        #f.puts("    printf(\"Visiting #{sv.sub('!', '')} for token %s\\n\", (*b)->content);")
+        #f.puts("    printf(\"Visiting #{sv.sub('!', '')} for token %s (from %s)\\n\", (*b)->content, parent ? parser_type_names[parent->type] : \"(nil)\");") unless sv[0] == '!'
         f.puts
         f.puts("    syntax_tree_node *node = new syntax_tree_node(syntax_tree_node::#{const sv}, #{sv[0] == '!' ? 'nullptr' : 'parent'}#{is_intermediate[sv] ? ', true' : ''});")
 
@@ -213,6 +217,7 @@ File.open('src/parser-sv-handlers.cxx', 'w') do |f|
 
             f.puts('    if (m > maximum_extent) maximum_extent = m;')
             f.puts('    *success = true;')
+            f.puts("    m = #{post_modify[sv]}(node, m, e, success);") if post_modify[sv]
             f.puts("    #{post_hooks[sv]}(node);") if post_hooks[sv]
             f.puts("    return #{sv[0] == '!' ? 'node' : 'm'};")
 

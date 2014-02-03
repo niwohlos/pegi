@@ -131,6 +131,25 @@ void syntax_tree_node::contract(void)
 }
 
 
+/**
+ * Returns the first token for this node.
+ */
+token *syntax_tree_node::first_token(void) const
+{
+    if (type == syntax_tree_node::TOKEN)
+        return ass_token;
+
+    for (syntax_tree_node *c: children)
+    {
+        token *t = c->first_token();
+        if (t)
+            return t;
+    }
+
+    return nullptr;
+}
+
+
 struct keyword_entry
 {
     const char *identifier;
@@ -530,6 +549,43 @@ static range_t sv_template_name(syntax_tree_node *parent, range_t b, range_t e, 
 
     *success = false;
     return b;
+}
+
+
+// God I hate this fucking syntax
+static range_t repair_noptr_declarator(syntax_tree_node *node, range_t b, range_t e, bool *success)
+{
+    (void)e;
+    (void)success;
+
+    if (node->parent->type != syntax_tree_node::DECLARATOR)
+        return b;
+
+    syntax_tree_node *c = node->children.back();
+    if (c->type != syntax_tree_node::NOPTR_DECLARATOR_REPEATABLE)
+        return b;
+
+    if (c->children.front()->type != syntax_tree_node::PARAMETERS_AND_QUALIFIERS)
+        return b;
+
+    // I HATE IT
+
+    token *tok = c->first_token();
+
+    delete c;
+    node->children.pop_back();
+
+    while (*b != tok)
+        --b;
+
+    return b;
+
+    /* Explanation: If noptr-declarator appears directly inside of declarator,
+     * it is followed by a mandatory parameters-and-qualifiers. However,
+     * noptr-declarator itself ends with a loop of parameters-and-qualifiers of
+     * indeterminate length. Therefore, we have to stuff the final instance back
+     * if noptr-declarator appears directly inside of declarator and ends with
+     * parameters-and-qualifiers. */
 }
 
 
