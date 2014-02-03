@@ -541,13 +541,23 @@ static range_t sv_class_name(syntax_tree_node *parent, range_t b, range_t e, boo
 {
     if (b == e) { *success = false; return b; }
 
+    syntax_tree_node *node = new syntax_tree_node(syntax_tree_node::CLASS_NAME, parent);
+
+    // FIXME: God please this is shit (read: only accept templates resolving to classes here)
+    bool could_parse;
+    range_t m = sv_simple_template_id(node, b, e, &could_parse);
+    if (could_parse)
+    {
+        *success = true;
+        return m;
+    }
+
     if ((*b)->type == token::IDENTIFIER)
     {
         for (const keyword_entry &cn: class_names)
         {
             if (!strcmp(reinterpret_cast<identifier_token *>(*b)->value, cn.identifier) && parent->sees(cn.declaration))
             {
-                syntax_tree_node *node = new syntax_tree_node(syntax_tree_node::CLASS_NAME, parent);
                 (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
                 *success = true;
                 return ++b;
@@ -559,7 +569,6 @@ static range_t sv_class_name(syntax_tree_node *parent, range_t b, range_t e, boo
         {
             if (!strcmp(reinterpret_cast<identifier_token *>(*b)->value, typedefd.identifier) && parent->sees(typedefd.declaration))
             {
-                syntax_tree_node *node = new syntax_tree_node(syntax_tree_node::CLASS_NAME, parent);
                 (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
                 *success = true;
                 return ++b;
