@@ -357,8 +357,8 @@ alias-declaration:
   keyword("using") identifier() [attribute-specifier-seq] operator("=") type-id operator(";")
 
 simple-declaration: post-hook(simple_declaration_done)
-  attribute-specifier-seq [decl-specifier-seq] init-declarator-list operator(";")
-  [decl-specifier-seq] [init-declarator-list] operator(";")
+  attribute-specifier-seq [decl-specifier-seq] init-declarator-list [gcc-attribute-specifier-seq] operator(";")
+  [decl-specifier-seq] [init-declarator-list] [gcc-attribute-specifier-seq] operator(";")
 
 static_assert-declaration:
   keyword("static_assert") operator("(") constant-expression operator(",") lit-string() operator(")") operator(";")
@@ -521,6 +521,9 @@ attribute-specifier-seq:
 attribute-specifier:
   alignment-specifier
   operator("[") operator("[") attribute-list operator("]") operator("]")
+
+gcc-attribute-specifier-seq:
+  identifier("__attribute__") operator("(") operator("(") balanced-token operator(")") operator(")")
 
 alignment-specifier:
   keyword("alignas") operator("(") assignment-expression [operator("...")] operator(")")
