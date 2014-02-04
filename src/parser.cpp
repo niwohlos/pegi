@@ -47,7 +47,7 @@ bool syntax_tree_node::sees(const syntax_tree_node *other) const
 
     const syntax_tree_node *other_scope = other->scope();
     if (!other_scope)
-        return true;
+        return false;
 
     for (const syntax_tree_node *s = scope(); s; s = s->scope_above())
         if (s == other_scope)
@@ -61,12 +61,13 @@ bool syntax_tree_node::sees(const syntax_tree_node *other) const
  * Finds the associated scope block, which is one of the following:
  *   - a compound statement
  *   - a class specifier
+ *   - a declaration sequence
  */
 syntax_tree_node *syntax_tree_node::scope(void) const
 {
     for (syntax_tree_node *n = parent; n; n = n->parent)
     {
-        if ((n->type == syntax_tree_node::COMPOUND_STATEMENT) || (n->type == syntax_tree_node::CLASS_SPECIFIER))
+        if ((n->type == syntax_tree_node::COMPOUND_STATEMENT) || (n->type == syntax_tree_node::CLASS_SPECIFIER) || (n->type == syntax_tree_node::DECLARATION_SEQ))
             return n;
         else if (n->type == syntax_tree_node::TEMPLATE_DECLARATION)
         {
@@ -77,7 +78,11 @@ syntax_tree_node *syntax_tree_node::scope(void) const
         }
     }
 
-    return nullptr;
+    token *tok = first_token();
+    if (tok)
+        throw format("%p Could not resolve scope of a %s node (%i:%i)", parent, parser_type_names[type], tok->line, tok->column);
+    else
+        throw format("Could not resolve scope of a %s node", parser_type_names[type]);
 }
 
 
@@ -87,7 +92,7 @@ syntax_tree_node *syntax_tree_node::scope(void) const
 syntax_tree_node *syntax_tree_node::scope_above(void) const
 {
     for (syntax_tree_node *n = parent; n; n = n->parent)
-        if ((n->type == syntax_tree_node::COMPOUND_STATEMENT) || (n->type == syntax_tree_node::CLASS_SPECIFIER))
+        if ((n->type == syntax_tree_node::COMPOUND_STATEMENT) || (n->type == syntax_tree_node::CLASS_SPECIFIER) || (n->type == syntax_tree_node::DECLARATION_SEQ))
             return n;
 
     return nullptr;
