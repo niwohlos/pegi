@@ -338,8 +338,8 @@ declaration:
   namespace-definition
   linkage-specification
   explicit-specialization
-  explicit-instantiation
   template-declaration
+  explicit-instantiation
   function-definition
   block-declaration
 
