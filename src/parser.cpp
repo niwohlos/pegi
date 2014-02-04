@@ -272,8 +272,9 @@ static range_t sv_trivially_balanced_token(syntax_tree_node *parent, range_t b, 
 
     syntax_tree_node *node = new syntax_tree_node(syntax_tree_node::TRIVIALLY_BALANCED_TOKEN, parent);
     (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
+    if (++b > maximum_extent) maximum_extent = b;
     *success = true;
-    return ++b;
+    return b;
 }
 
 
@@ -310,8 +311,9 @@ static range_t sv_overloadable_operator(syntax_tree_node *parent, range_t b, ran
                 (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
                 (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *++b;
                 (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *++b;
+                if (++b > maximum_extent) maximum_extent = b;
                 *success = true;
-                return ++b;
+                return b;
             }
         }
     }
@@ -348,8 +350,9 @@ static range_t sv_overloadable_operator(syntax_tree_node *parent, range_t b, ran
 
     syntax_tree_node *node = new syntax_tree_node(syntax_tree_node::OVERLOADABLE_OPERATOR, parent);
     (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
+    if (++b > maximum_extent) maximum_extent = b;
     *success = true;
-    return ++b;
+    return b;
 }
 
 
@@ -512,8 +515,9 @@ static range_t sv_typedef_name(syntax_tree_node *parent, range_t b, range_t e, b
             {
                 syntax_tree_node *node = new syntax_tree_node(syntax_tree_node::TYPEDEF_NAME, parent);
                 (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
+                if (++b > maximum_extent) maximum_extent = b;
                 *success = true;
-                return ++b;
+                return b;
             }
         }
     }
@@ -554,6 +558,7 @@ static range_t sv_class_name(syntax_tree_node *parent, range_t b, range_t e, boo
     range_t m = sv_simple_template_id(node, b, e, &could_parse);
     if (could_parse)
     {
+        if (m > maximum_extent) maximum_extent = m;
         *success = true;
         return m;
     }
@@ -570,8 +575,9 @@ static range_t sv_class_name(syntax_tree_node *parent, range_t b, range_t e, boo
             if (is_identifier(parent, *b, nullptr))
             {
                 (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
+                if (++b > maximum_extent) maximum_extent = b;
                 *success = true;
-                return ++b;
+                return b;
             }
         }
 
@@ -580,8 +586,9 @@ static range_t sv_class_name(syntax_tree_node *parent, range_t b, range_t e, boo
             if (!strcmp(reinterpret_cast<identifier_token *>(*b)->value, cn.identifier) && parent->sees(cn.declaration))
             {
                 (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
+                if (++b > maximum_extent) maximum_extent = b;
                 *success = true;
-                return ++b;
+                return b;
             }
         }
 
@@ -591,8 +598,9 @@ static range_t sv_class_name(syntax_tree_node *parent, range_t b, range_t e, boo
             if (!strcmp(reinterpret_cast<identifier_token *>(*b)->value, typedefd.identifier) && parent->sees(typedefd.declaration))
             {
                 (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
+                if (++b > maximum_extent) maximum_extent = b;
                 *success = true;
-                return ++b;
+                return b;
             }
         }
     }
@@ -627,8 +635,9 @@ static range_t sv_template_name(syntax_tree_node *parent, range_t b, range_t e, 
             {
                 syntax_tree_node *node = new syntax_tree_node(syntax_tree_node::TEMPLATE_NAME, parent);
                 (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
+                if (++b > maximum_extent) maximum_extent = b;
                 *success = true;
-                return ++b;
+                return b;
             }
         }
     }
@@ -657,8 +666,9 @@ static range_t sv_right_shift(syntax_tree_node *parent, range_t b, range_t e, bo
             // safe.
             (new syntax_tree_node(syntax_tree_node::TOKEN, parent))->ass_token = *b;
             (new syntax_tree_node(syntax_tree_node::TOKEN, parent))->ass_token = *m;
+            if (++m > maximum_extent) maximum_extent = m;
             *success = true;
-            return ++m;
+            return m;
         }
     }
 
@@ -681,8 +691,9 @@ static range_t sv_right_shift_assignment(syntax_tree_node *parent, range_t b, ra
             // XXX: See above.
             (new syntax_tree_node(syntax_tree_node::TOKEN, parent))->ass_token = *b;
             (new syntax_tree_node(syntax_tree_node::TOKEN, parent))->ass_token = *m;
+            if (++m > maximum_extent) maximum_extent = m;
             *success = true;
-            return ++m;
+            return m;
         }
     }
 
