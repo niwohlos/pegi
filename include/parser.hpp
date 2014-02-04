@@ -20,6 +20,7 @@ class syntax_tree_node
             TYPEDEF_NAME,
             CLASS_NAME,
             TEMPLATE_NAME,
+            ORIGINAL_NAMESPACE_NAME,
         };
 
         syntax_tree_node *parent;

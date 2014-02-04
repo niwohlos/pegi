@@ -356,7 +356,7 @@ static range_t sv_overloadable_operator(syntax_tree_node *parent, range_t b, ran
 }
 
 
-std::list<keyword_entry> typedef_names, class_names, template_names;
+std::list<keyword_entry> typedef_names, class_names, template_names, original_namespace_names;
 
 
 static void push_plain_qualified_ids(syntax_tree_node *node, syntax_tree_node *declaration, std::list<keyword_entry> *target)
@@ -503,6 +503,25 @@ static void template_parameter_done(syntax_tree_node *node)
 }
 
 
+static void original_namespace_definition_done(syntax_tree_node *node)
+{
+    auto i = node->children.begin();
+    ++i;
+
+    if ((*i)->type != syntax_tree_node::TOKEN)
+        throw format("original-namespace-definition must start with at least two tokens. Check the syntax definition file.");
+
+    if (!strcmp(reinterpret_cast<identifier_token *>((*i)->ass_token)->value, "namespace")) // First was "inline", then
+        ++i;
+
+    if ((*i)->type != syntax_tree_node::TOKEN)
+        throw format("Identifier missing in original-namespace-definition.");
+
+    original_namespace_names.push_back({strdup(reinterpret_cast<identifier_token *>((*i)->ass_token)->value), node, false});
+    keywords.push_back({strdup(reinterpret_cast<identifier_token *>((*i)->ass_token)->value), node, false});
+}
+
+
 static range_t sv_typedef_name(syntax_tree_node *parent, range_t b, range_t e, bool *success)
 {
     if (b == e) { *success = false; return b; }
@@ -529,8 +548,22 @@ static range_t sv_typedef_name(syntax_tree_node *parent, range_t b, range_t e, b
 
 static range_t sv_original_namespace_name(syntax_tree_node *parent, range_t b, range_t e, bool *success)
 {
-    (void)parent;
-    (void)e;
+    if (b == e) { *success = false; return b; }
+
+    if ((*b)->type == token::IDENTIFIER)
+    {
+        for (const keyword_entry &ns: original_namespace_names)
+        {
+            if (!strcmp(reinterpret_cast<identifier_token *>(*b)->value, ns.identifier) && parent->sees(ns.declaration))
+            {
+                syntax_tree_node *node = new syntax_tree_node(syntax_tree_node::ORIGINAL_NAMESPACE_NAME, parent);
+                (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
+                if (++b > maximum_extent) maximum_extent = b;
+                *success = true;
+                return b;
+            }
+        }
+    }
 
     *success = false;
     return b;
@@ -540,7 +573,8 @@ static range_t sv_original_namespace_name(syntax_tree_node *parent, range_t b, r
 static range_t sv_namespace_alias(syntax_tree_node *parent, range_t b, range_t e, bool *success)
 {
     (void)parent;
-    (void)e;
+
+    if (b == e) { *success = false; return b; }
 
     *success = false;
     return b;
@@ -746,7 +780,7 @@ syntax_tree_node *build_syntax_tree(const std::vector<token *> &token_list)
 {
     maximum_extent = token_list.begin();
 
-    for (std::list<keyword_entry> *kwl: {&keywords, &typedef_names, &class_names, &template_names})
+    for (std::list<keyword_entry> *kwl: {&keywords, &typedef_names, &class_names, &template_names, &original_namespace_names})
     {
         for (const keyword_entry &kw: *kwl)
             if (!kw.builtin)
