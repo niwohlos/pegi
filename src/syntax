@@ -484,13 +484,13 @@ named-namespace-definition:
   original-namespace-definition
 
 original-namespace-definition:
-  [keyword("inline")] keyword("namespace") identifier() operator("{") namespace-body operator("}")
+  [keyword("inline")] keyword("namespace") identifier() [gcc-attribute-specifier-seq] operator("{") namespace-body operator("}")
 
 extension-namespace-definition:
-  [keyword("inline")] keyword("namespace") original-namespace-name operator("{") namespace-body operator("}")
+  [keyword("inline")] keyword("namespace") original-namespace-name [gcc-attribute-specifier-seq] operator("{") namespace-body operator("}")
 
 unnamed-namespace-definition:
-  [keyword("inline")] keyword("namespace") operator("{") namespace-body operator("}")
+  [keyword("inline")] keyword("namespace") [gcc-attribute-specifier-seq] operator("{") namespace-body operator("}")
 
 namespace-body:
   [declaration-seq]
