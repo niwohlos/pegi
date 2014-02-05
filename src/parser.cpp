@@ -885,6 +885,7 @@ static void nested_name_specifier_repeatable_done(syntax_tree_node *node)
     if (ns_scope && (ns_scope->type != syntax_tree_node::CLASS_SPECIFIER))
         ns_scope = ns_scope->scope_below();
 
+    namespace_scope_stack.pop();
     namespace_scope_stack.push({ns_scope, node->parent->parent});
     namespace_scope = ns_scope;
 }
