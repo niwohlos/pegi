@@ -210,6 +210,46 @@ Describe(parser)
             delete err;
         }
     }
+
+
+    Spec(ex5)
+    {
+        try
+        {
+            std::vector<token *> token_list = tokenize(
+                "namespace foo\n"
+                "{\n"
+                "    class bar\n"
+                "    {\n"
+                "        public:\n"
+                "            class baz\n"
+                "            {\n"
+                "            };\n"
+                "    };\n"
+                "}\n"
+                "\n"
+                "foo::bar::baz *x;\n"
+            );
+
+            syntax_tree_node *root = build_syntax_tree(token_list);
+            char *output = dump_syntax_tree_to_buffer(root);
+            delete root;
+            for (token *t: token_list)
+                delete t;
+
+            Assert::That(output, Equals(
+#include "parserspec-ex5-compare.h"
+            ));
+
+            delete[] output;
+        }
+        catch (error *err)
+        {
+            err->emit();
+            Assert::Failure(err->msg);
+            delete err;
+        }
+    }
 };
 
 #endif
