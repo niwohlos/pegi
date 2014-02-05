@@ -3,12 +3,24 @@
 #include <cstdlib>
 #include <cstring>
 #include <list>
+#include <stack>
 #include <vector>
 
 #include "error.hpp"
 #include "format.hpp"
 #include "parser.hpp"
 #include "tokenize.hpp"
+
+
+struct keyword_entry
+{
+    const char *identifier;
+    syntax_tree_node *declaration, *complete_declaration;
+};
+
+
+// XXX: Make this into a prefix tree or something
+static std::list<keyword_entry> keywords, typedef_names, class_names, template_names, original_namespace_names;
 
 
 syntax_tree_node::syntax_tree_node(sv_type t, syntax_tree_node *p, bool i):
@@ -23,6 +35,42 @@ syntax_tree_node::~syntax_tree_node(void)
 {
     for (syntax_tree_node *n: children)
         delete n;
+
+    bool registered = false;
+    for (auto it = keywords.begin(); it != keywords.end();)
+    {
+        auto it_next = it;
+        ++it_next;
+
+        if ((this == (*it).declaration) || (this == (*it).complete_declaration))
+        {
+            free(const_cast<char *>((*it).identifier));
+            keywords.erase(it);
+            registered = true;
+        }
+
+        it = it_next;
+    }
+
+    if (registered)
+    {
+        for (std::list<keyword_entry> *kwl: {&typedef_names, &class_names, &template_names, &original_namespace_names})
+        {
+            for (auto it = kwl->begin(); it != kwl->end();)
+            {
+                auto it_next = it;
+                ++it_next;
+
+                if ((this == (*it).declaration) || (this == (*it).complete_declaration))
+                {
+                    free(const_cast<char *>((*it).identifier));
+                    kwl->erase(it);
+                }
+
+                it = it_next;
+            }
+        }
+    }
 }
 
 
@@ -54,6 +102,13 @@ bool syntax_tree_node::sees(const syntax_tree_node *other) const
             return true;
 
     return false;
+}
+
+
+bool syntax_tree_node::sees_in_ns(const syntax_tree_node *other, const syntax_tree_node *ns) const
+{
+    // FIXME: Oh god does this even work
+    return ns ? (other->scope_above() == ns) : sees(other);
 }
 
 
@@ -106,7 +161,7 @@ syntax_tree_node *syntax_tree_node::scope_below(void) const
 {
     for (syntax_tree_node *c: children)
     {
-        if ((c->type == syntax_tree_node::COMPOUND_STATEMENT) || (c->type == syntax_tree_node::CLASS_SPECIFIER))
+        if ((c->type == syntax_tree_node::COMPOUND_STATEMENT) || (c->type == syntax_tree_node::CLASS_SPECIFIER) || (c->type == syntax_tree_node::DECLARATION_SEQ))
             return c;
 
         syntax_tree_node *sb = c->scope_below();
@@ -203,18 +258,6 @@ void syntax_tree_node::fix_right_shifts(void)
 }
 
 
-struct keyword_entry
-{
-    const char *identifier;
-    syntax_tree_node *declaration;
-    bool builtin;
-};
-
-
-// XXX: Make this into a prefix tree or something
-static std::list<keyword_entry> keywords;
-
-
 typedef std::vector<token *>::const_iterator range_t;
 
 static range_t maximum_extent;
@@ -223,6 +266,8 @@ static range_t maximum_extent;
 #include "parser-sv-prototypes.cxx"
 
 
+// Funny thing about C++: Only use the keyword/identifier separation for the
+// current namespace.
 static bool is_keyword(syntax_tree_node *parent, token *tok, const char *name)
 {
     (void)parent;
@@ -356,7 +401,15 @@ static range_t sv_overloadable_operator(syntax_tree_node *parent, range_t b, ran
 }
 
 
-std::list<keyword_entry> typedef_names, class_names, template_names, original_namespace_names;
+struct namespace_scope_entry
+{
+    syntax_tree_node *scope;
+    syntax_tree_node *related;
+};
+
+std::stack<namespace_scope_entry> namespace_scope_stack;
+
+static syntax_tree_node *namespace_scope;
 
 
 static void push_plain_qualified_ids(syntax_tree_node *node, syntax_tree_node *declaration, std::list<keyword_entry> *target)
@@ -367,8 +420,9 @@ static void push_plain_qualified_ids(syntax_tree_node *node, syntax_tree_node *d
             (c->children.front()->type == syntax_tree_node::TOKEN) &&
             (c->children.front()->ass_token->type == token::IDENTIFIER))
         {
-            target->push_back({strdup(reinterpret_cast<identifier_token *>(c->children.front()->ass_token)->value), declaration, false});
-            keywords.push_back({strdup(reinterpret_cast<identifier_token *>(c->children.front()->ass_token)->value), declaration, false});
+            // FIXME: Use complete_declaration for type reference
+            target->push_back({strdup(reinterpret_cast<identifier_token *>(c->children.front()->ass_token)->value), declaration, nullptr});
+            keywords.push_back({strdup(reinterpret_cast<identifier_token *>(c->children.front()->ass_token)->value), declaration, nullptr});
         }
         else
             push_plain_qualified_ids(c, declaration, target);
@@ -421,28 +475,38 @@ static void simple_declaration_done(syntax_tree_node *node)
                 if ((c = c->children.back())->type != syntax_tree_node::TOKEN) continue;
                 if (c->ass_token->type != token::IDENTIFIER) continue;
                 tok = reinterpret_cast<identifier_token *>(c->ass_token);
-            }
-            else if (c->type == syntax_tree_node::CLASS_SPECIFIER)
-            {
-                if ((c = c->children.front())->type != syntax_tree_node::CLASS_HEAD) continue;
-                for (syntax_tree_node *cc: c->children)
-                {
-                    if (cc->type == syntax_tree_node::CLASS_HEAD_NAME)
-                    {
-                        if ((cc = cc->children.back())->type != syntax_tree_node::CLASS_NAME) continue;
-                        if ((cc = cc->children.back())->type != syntax_tree_node::TOKEN) continue;
-                        if (cc->ass_token->type != token::IDENTIFIER) continue;
-                        tok = reinterpret_cast<identifier_token *>(cc->ass_token);
-                        break;
-                    }
-                }
-            }
 
-            if (tok)
-            {
-                class_names.push_back({strdup(tok->value), node->parent->parent, false});
-                keywords.push_back({strdup(tok->value), node->parent->parent, false});
+                class_names.push_back({strdup(tok->value), node->parent->parent, nullptr});
+                keywords.push_back({strdup(tok->value), node->parent->parent, nullptr});
             }
+        }
+    }
+}
+
+
+static void class_specifier_done(syntax_tree_node *node)
+{
+    syntax_tree_node *c = node->children.front();
+
+    if (c->type != syntax_tree_node::CLASS_HEAD) return;
+    for (syntax_tree_node *cc: c->children)
+    {
+        if (cc->type == syntax_tree_node::CLASS_HEAD_NAME)
+        {
+            if ((cc = cc->children.back())->type != syntax_tree_node::CLASS_NAME) continue;
+            if ((cc = cc->children.back())->type != syntax_tree_node::TOKEN) continue;
+            if (cc->ass_token->type != token::IDENTIFIER) continue;
+
+            // TODO: Overwrite old entry, if it exists
+
+            syntax_tree_node *decl;
+            for (decl = node; decl && (decl->type != syntax_tree_node::DECLARATION) && (decl->type != syntax_tree_node::MEMBER_DECLARATION); decl = decl->parent);
+            decl = decl ? decl : node;
+
+            class_names.push_back({strdup(reinterpret_cast<identifier_token *>(cc->ass_token)->value), decl, node});
+            keywords.push_back({strdup(reinterpret_cast<identifier_token *>(cc->ass_token)->value), decl, node});
+
+            return;
         }
     }
 }
@@ -451,15 +515,13 @@ static void simple_declaration_done(syntax_tree_node *node)
 static void template_declaration_done(syntax_tree_node *node)
 {
     for (syntax_tree_node *c: node->children)
-        if (c->type == syntax_tree_node::DECLARATION)
+        if ((c->type == syntax_tree_node::DECLARATION) || (c->type == syntax_tree_node::MEMBER_DECLARATION))
             for (const keyword_entry &kw: class_names)
                 if (kw.declaration == c)
-                    template_names.push_back({strdup(kw.identifier), node->parent, false});
+                    template_names.push_back({strdup(kw.identifier), node->parent, kw.complete_declaration});
 }
 
 
-// FIXME: Having a match for this doesn't mean anything. We should really be
-// able to revoke such a declaration if necessary.
 static void template_parameter_done(syntax_tree_node *node)
 {
     // Not really a declaration but lol idc yours clici
@@ -485,15 +547,15 @@ static void template_parameter_done(syntax_tree_node *node)
         if (identifier)
         {
             if (!strcmp(reinterpret_cast<identifier_token *>(node->children.front()->ass_token)->value, "template"))
-                template_names.push_back({strdup(identifier), declaration, false});
+                template_names.push_back({strdup(identifier), declaration, nullptr});
             else if (!strcmp(reinterpret_cast<identifier_token *>(node->children.front()->ass_token)->value, "typename"))
-                typedef_names.push_back({strdup(identifier), declaration, false});
+                typedef_names.push_back({strdup(identifier), declaration, nullptr});
             else if (!strcmp(reinterpret_cast<identifier_token *>(node->children.front()->ass_token)->value, "class"))
-                class_names.push_back({strdup(identifier), declaration, false});
+                class_names.push_back({strdup(identifier), declaration, nullptr});
             else
                 throw format("A type parameter must be precedented by template, typename or class. Check the syntax definition file.");
 
-            keywords.push_back({strdup(identifier), declaration, false});
+            keywords.push_back({strdup(identifier), declaration, nullptr});
         }
     }
     // Nothing to do for parameter-declaration, since this only introduces a
@@ -517,8 +579,8 @@ static void original_namespace_definition_done(syntax_tree_node *node)
     if ((*i)->type != syntax_tree_node::TOKEN)
         throw format("Identifier missing in original-namespace-definition.");
 
-    original_namespace_names.push_back({strdup(reinterpret_cast<identifier_token *>((*i)->ass_token)->value), node, false});
-    keywords.push_back({strdup(reinterpret_cast<identifier_token *>((*i)->ass_token)->value), node, false});
+    original_namespace_names.push_back({strdup(reinterpret_cast<identifier_token *>((*i)->ass_token)->value), node, node});
+    keywords.push_back({strdup(reinterpret_cast<identifier_token *>((*i)->ass_token)->value), node, node});
 }
 
 
@@ -530,9 +592,11 @@ static range_t sv_typedef_name(syntax_tree_node *parent, range_t b, range_t e, b
     {
         for (const keyword_entry &typedefd: typedef_names)
         {
-            if (!strcmp(reinterpret_cast<identifier_token *>(*b)->value, typedefd.identifier) && parent->sees(typedefd.declaration))
+            if (!strcmp(reinterpret_cast<identifier_token *>(*b)->value, typedefd.identifier) &&
+                parent->sees_in_ns(typedefd.declaration, namespace_scope))
             {
                 syntax_tree_node *node = new syntax_tree_node(syntax_tree_node::TYPEDEF_NAME, parent);
+                node->supplemental.declaration = typedefd.complete_declaration;
                 (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
                 if (++b > maximum_extent) maximum_extent = b;
                 *success = true;
@@ -554,9 +618,11 @@ static range_t sv_original_namespace_name(syntax_tree_node *parent, range_t b, r
     {
         for (const keyword_entry &ns: original_namespace_names)
         {
-            if (!strcmp(reinterpret_cast<identifier_token *>(*b)->value, ns.identifier) && parent->sees(ns.declaration))
+            if (!strcmp(reinterpret_cast<identifier_token *>(*b)->value, ns.identifier) &&
+                parent->sees_in_ns(ns.declaration, namespace_scope))
             {
                 syntax_tree_node *node = new syntax_tree_node(syntax_tree_node::ORIGINAL_NAMESPACE_NAME, parent);
+                node->supplemental.declaration = ns.complete_declaration;
                 (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
                 if (++b > maximum_extent) maximum_extent = b;
                 *success = true;
@@ -592,6 +658,8 @@ static range_t sv_class_name(syntax_tree_node *parent, range_t b, range_t e, boo
     range_t m = sv_simple_template_id(node, b, e, &could_parse);
     if (could_parse)
     {
+        //                             class-name   simple-template-id  template-name
+        node->supplemental.declaration = node->children.front()->children.front()->supplemental.declaration;
         if (m > maximum_extent) maximum_extent = m;
         *success = true;
         return m;
@@ -608,6 +676,8 @@ static range_t sv_class_name(syntax_tree_node *parent, range_t b, range_t e, boo
 
             if (is_identifier(parent, *b, nullptr))
             {
+                // class-head-name -> class-head -> class-specifier
+                node->supplemental.declaration = parent->parent->parent;
                 (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
                 if (++b > maximum_extent) maximum_extent = b;
                 *success = true;
@@ -617,8 +687,10 @@ static range_t sv_class_name(syntax_tree_node *parent, range_t b, range_t e, boo
 
         for (const keyword_entry &cn: class_names)
         {
-            if (!strcmp(reinterpret_cast<identifier_token *>(*b)->value, cn.identifier) && parent->sees(cn.declaration))
+            if (!strcmp(reinterpret_cast<identifier_token *>(*b)->value, cn.identifier) &&
+                parent->sees_in_ns(cn.declaration, namespace_scope))
             {
+                node->supplemental.declaration = cn.complete_declaration;
                 (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
                 if (++b > maximum_extent) maximum_extent = b;
                 *success = true;
@@ -629,8 +701,11 @@ static range_t sv_class_name(syntax_tree_node *parent, range_t b, range_t e, boo
         // FIXME: Only accept class typedefs here (i.e., resolve typedef)
         for (const keyword_entry &typedefd: typedef_names)
         {
-            if (!strcmp(reinterpret_cast<identifier_token *>(*b)->value, typedefd.identifier) && parent->sees(typedefd.declaration))
+            if (!strcmp(reinterpret_cast<identifier_token *>(*b)->value, typedefd.identifier) &&
+                parent->sees_in_ns(typedefd.declaration, namespace_scope))
             {
+                // FIXME: RESOLVE NAO
+                node->supplemental.declaration = typedefd.complete_declaration;
                 (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
                 if (++b > maximum_extent) maximum_extent = b;
                 *success = true;
@@ -665,9 +740,11 @@ static range_t sv_template_name(syntax_tree_node *parent, range_t b, range_t e, 
     {
         for (const keyword_entry &tn: template_names)
         {
-            if (!strcmp(reinterpret_cast<identifier_token *>(*b)->value, tn.identifier) && parent->sees(tn.declaration))
+            if (!strcmp(reinterpret_cast<identifier_token *>(*b)->value, tn.identifier) &&
+                parent->sees_in_ns(tn.declaration, namespace_scope))
             {
                 syntax_tree_node *node = new syntax_tree_node(syntax_tree_node::TEMPLATE_NAME, parent);
+                node->supplemental.declaration = tn.complete_declaration;
                 (new syntax_tree_node(syntax_tree_node::TOKEN, node))->ass_token = *b;
                 if (++b > maximum_extent) maximum_extent = b;
                 *success = true;
@@ -773,6 +850,73 @@ static range_t repair_noptr_declarator(syntax_tree_node *node, range_t b, range_
 }
 
 
+static void nested_name_specifier_start_done(syntax_tree_node *node)
+{
+    auto ci = node->children.begin();
+
+    if ((*ci)->type == syntax_tree_node::TOKEN) // operator("::")
+        ++ci;
+
+    if ((*ci)->type == syntax_tree_node::DECLTYPE_SPECIFIER)
+        throw format("Please implement decltype-specifier for nested-name-specifier"); // どうしよう〜
+
+    syntax_tree_node *n = (*ci)->children.front();
+    if (n->type == syntax_tree_node::SIMPLE_TEMPLATE_ID)
+        n = n->children.front(); // template-name
+
+    syntax_tree_node *ns_scope = n->supplemental.declaration ? n->supplemental.declaration->scope_below() : nullptr;
+    namespace_scope_stack.push({ns_scope, node->parent->parent});
+    namespace_scope = ns_scope;
+}
+
+
+static void nested_name_specifier_repeatable_done(syntax_tree_node *node)
+{
+    auto ci = node->children.begin();
+
+    if (((*ci)->type == syntax_tree_node::TOKEN) && !strcmp((*ci)->ass_token->content, "template"))
+        ++ci;
+
+    syntax_tree_node *n = (*ci)->children.front();
+    if (n->type == syntax_tree_node::SIMPLE_TEMPLATE_ID) // this shouldn't even happen
+        n = n->children.front(); // template-name
+    syntax_tree_node *ns_scope = n->supplemental.declaration;
+
+    if (ns_scope && (ns_scope->type != syntax_tree_node::CLASS_SPECIFIER))
+        ns_scope = ns_scope->scope_below();
+
+    namespace_scope_stack.push({ns_scope, node->parent->parent});
+    namespace_scope = ns_scope;
+}
+
+
+static void clear_nested_name_specifier(syntax_tree_node *node)
+{
+    if (namespace_scope_stack.empty())
+        return;
+
+    if (node == namespace_scope_stack.top().related)
+    {
+        namespace_scope_stack.pop();
+
+        if (!namespace_scope_stack.empty())
+            namespace_scope = namespace_scope_stack.top().scope;
+        else
+            namespace_scope = nullptr;
+    }
+}
+
+
+static void push_null_namespace(syntax_tree_node *node)
+{
+    if ((node->parent->type == syntax_tree_node::QUALIFIED_ID) || !namespace_scope)
+        return;
+
+    namespace_scope_stack.push({nullptr, node});
+    namespace_scope = nullptr;
+}
+
+
 #include "parser-sv-handlers.cxx"
 
 
@@ -783,49 +927,33 @@ syntax_tree_node *build_syntax_tree(const std::vector<token *> &token_list)
     for (std::list<keyword_entry> *kwl: {&keywords, &typedef_names, &class_names, &template_names, &original_namespace_names})
     {
         for (const keyword_entry &kw: *kwl)
-            if (!kw.builtin)
-                free(const_cast<char *>(kw.identifier));
+            free(const_cast<char *>(kw.identifier));
 
         kwl->clear();
     }
 
     // new and delete are operators; false, nullptr and true are literals.
-    keywords = {
-        {"alignas", nullptr, true}, {"alignof", nullptr, true},
-        {"asm", nullptr, true}, {"auto", nullptr, true},
-        {"bool", nullptr, true}, {"break", nullptr, true},
-        {"case", nullptr, true}, {"catch", nullptr, true},
-        {"char", nullptr, true}, {"char16_t", nullptr, true},
-        {"char32_t", nullptr, true}, {"class", nullptr, true},
-        {"const", nullptr, true}, {"constexpr", nullptr, true},
-        {"const_cast", nullptr, true}, {"continue", nullptr, true},
-        {"decltype", nullptr, true}, {"default", nullptr, true},
-        {"do", nullptr, true}, {"double", nullptr, true},
-        {"dynamic_cast", nullptr, true}, {"else", nullptr, true},
-        {"enum", nullptr, true}, {"explicit", nullptr, true},
-        {"export", nullptr, true}, {"extern", nullptr, true},
-        {"float", nullptr, true}, {"for", nullptr, true},
-        {"friend", nullptr, true}, {"goto", nullptr, true},
-        {"if", nullptr, true}, {"inline", nullptr, true},
-        {"int", nullptr, true}, {"long", nullptr, true},
-        {"mutable", nullptr, true}, {"namespace", nullptr, true},
-        {"noexcept", nullptr, true}, {"operator", nullptr, true},
-        {"private", nullptr, true}, {"protected", nullptr, true},
-        {"public", nullptr, true}, {"register", nullptr, true},
-        {"reinterpret_cast", nullptr, true}, {"return", nullptr, true},
-        {"short", nullptr, true}, {"signed", nullptr, true},
-        {"sizeof", nullptr, true}, {"static", nullptr, true},
-        {"static_assert", nullptr, true}, {"static_cast", nullptr, true},
-        {"struct", nullptr, true}, {"switch", nullptr, true},
-        {"template", nullptr, true}, {"this", nullptr, true},
-        {"thread_local", nullptr, true}, {"throw", nullptr, true},
-        {"try", nullptr, true}, {"typedef", nullptr, true},
-        {"typeid", nullptr, true}, {"typename", nullptr, true},
-        {"union", nullptr, true}, {"unsigned", nullptr, true},
-        {"using", nullptr, true}, {"virtual", nullptr, true},
-        {"void", nullptr, true}, {"volatile", nullptr, true},
-        {"wchar_t", nullptr, true}, {"while", nullptr, true}
-    };
+    for (auto kw: { "alignas", "alignof", "asm", "auto", "bool", "break",
+                    "case", "catch", "char", "char16_t", "char32_t", "class",
+                    "const", "constexpr", "const_cast", "continue", "decltype",
+                    "default", "do", "double", "dynamic_cast", "else", "enum",
+                    "explicit", "export", "extern", "float", "for", "friend",
+                    "goto", "if", "inline", "int", "long", "mutable",
+                    "namespace", "noexcept", "operator", "private", "protected",
+                    "public", "register", "reinterpret_cast", "return", "short",
+                    "signed", "sizeof", "static", "static_assert",
+                    "static_cast", "struct", "switch", "template", "this",
+                    "thread_local", "throw", "try", "typedef", "typeid",
+                    "typename", "union", "unsigned", "using", "virtual", "void",
+                    "volatile", "wchar_t", "while" })
+    {
+        keywords.push_back({strdup(kw), nullptr, nullptr});
+    }
+
+    while (!namespace_scope_stack.empty())
+        namespace_scope_stack.pop();
+
+    namespace_scope = nullptr;
 
     syntax_tree_node *root = nullptr;
     try

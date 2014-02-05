@@ -2,9 +2,12 @@
 # coding: utf-8
 
 svs = Hash.new
+pre_hooks = Hash.new
 post_hooks = Hash.new
 post_modify = Hash.new
 is_intermediate = Hash.new
+all_fail_hooks = Hash.new
+fail_hooks = Hash.new
 current = nil
 
 def missing_parameter_for(attribute)
@@ -50,6 +53,15 @@ IO.readlines('src/syntax').each do |line|
             when 'post-modify'
                 missing_parameter_for 'post-modify' unless parameter
                 post_modify[current] = parameter
+            when 'all-fail-hook'
+                missing_parameter_for 'all-fail-hook' unless parameter
+                all_fail_hooks[current] = parameter
+            when 'pre-hook'
+                missing_parameter_for 'pre-hook' unless parameter
+                pre_hooks[current] = parameter
+            when 'fail-hook'
+                missing_parameter_for 'fail-hook' unless parameter
+                fail_hooks[current] = parameter
             else
                 $stderr.puts("Unknown attribute #{match[1]}")
                 exit 1
@@ -116,9 +128,10 @@ File.open('src/parser-sv-handlers.cxx', 'w') do |f|
         end
         f.puts('{')
         f.puts("    bool could_parse;")
-        #f.puts("    printf(\"Visiting #{sv.sub('!', '')} for token %s (from %s)\\n\", (*b)->content, parent ? parser_type_names[parent->type] : \"(nil)\");") unless sv[0] == '!'
+        #f.puts("    printf(\"Visiting #{sv.sub('!', '')} for token %s; \", (*b)->content); for (syntax_tree_node *p = parent; p; p = p->parent) printf(\"%s <- \", parser_type_names[p->type]); putchar('\\n');") unless sv[0] == '!'
         f.puts
         f.puts("    syntax_tree_node *node = new syntax_tree_node(syntax_tree_node::#{const sv}, #{sv[0] == '!' ? 'nullptr' : 'parent'}#{is_intermediate[sv] ? ', true' : ''});")
+        f.puts("    #{pre_hooks[sv]}(node);") if pre_hooks[sv]
 
         f.puts
         f.puts("    // #{sv.sub('!', '')}:")
@@ -138,6 +151,7 @@ File.open('src/parser-sv-handlers.cxx', 'w') do |f|
             f.puts
             f.puts("sv_#{var sv}_part_#{i}:")
             if i > 0
+                f.puts("    #{all_fail_hooks[sv]}(node);") if all_fail_hooks[sv]
                 f.puts('    for (syntax_tree_node *c: node->children) delete c; node->children.clear();')
                 f.puts('    m = b;')
                 f.puts
@@ -196,7 +210,7 @@ File.open('src/parser-sv-handlers.cxx', 'w') do |f|
                     f.puts('    {')
                     f.puts('        syntax_tree_node *tok_node = new syntax_tree_node(syntax_tree_node::TOKEN, node);')
                     f.puts('        tok_node->ass_token = *m;')
-                    f.puts('        ++m;')
+                    f.puts('        if (++m > maximum_extent) maximum_extent = m;')
                     f.puts('        incomplete++;') if in_loop
                     f.puts('    }')
                     f.puts('    else') unless optional
@@ -237,6 +251,8 @@ File.open('src/parser-sv-handlers.cxx', 'w') do |f|
         f.puts
         f.puts
         f.puts("sv_#{var sv}_part_#{i}:")
+        f.puts("    #{all_fail_hooks[sv]}(node);") if all_fail_hooks[sv]
+        f.puts("    #{fail_hooks[sv]}(node);") if fail_hooks[sv]
         f.puts('    node->detach();')
         f.puts('    delete node;')
         f.puts('    *success = false;')

@@ -33,7 +33,7 @@ id-expression:
   qualified-id
   unqualified-id
 
-unqualified-id:
+unqualified-id: pre-hook(push_null_namespace) post-hook(clear_nested_name_specifier) fail-hook(clear_nested_name_specifier)
   template-id
   operator("~") decltype-specifier
   operator("~") class-name
@@ -42,18 +42,23 @@ unqualified-id:
   operator-function-id
   identifier()
 
-qualified-id:
+qualified-id: post-hook(clear_nested_name_specifier) all-fail-hook(clear_nested_name_specifier)
   operator("::") template-id
   operator("::") literal-operator-id
   operator("::") operator-function-id
   operator("::") identifier()
   nested-name-specifier [keyword("template")] unqualified-id
 
-nested-name-specifier-repeatable: intermediate
+nested-name-specifier-repeatable: intermediate post-hook(nested_name_specifier_repeatable_done)
   [keyword("template")] simple-template-id operator("::")
-  identifier() operator("::")
+-- Standard says:
+-- identifier() operator("::")
+-- But that's shitty, because you need to look it up anyway, so we can use the
+-- correct stuff here as well.
+  namespace-name operator("::")
+  type-name operator("::")
 
-nested-name-specifier-start: intermediate
+nested-name-specifier-start: intermediate post-hook(nested_name_specifier_start_done)
   decltype-specifier operator("::")
   [operator("::")] namespace-name operator("::")
   [operator("::")] type-name operator("::")
@@ -117,7 +122,7 @@ postfix-expression:
 expression-list:
   initializer-list
 
-pseudo-destructor-name:
+pseudo-destructor-name: post-hook(clear_nested_name_specifier) all-fail-hook(clear_nested_name_specifier)
   operator("~") decltype-specifier
   [nested-name-specifier] operator("~") type-name
   nested-name-specifier keyword("template") simple-template-id operator("::") operator("~") type-name
@@ -392,7 +397,7 @@ function-specifier:
   keyword("virtual")
   keyword("inline")
 
-type-specifier:
+type-specifier: pre-hook(push_null_namespace) post-hook(clear_nested_name_specifier) fail-hook(clear_nested_name_specifier)
   enum-specifier
   class-specifier
   trailing-type-specifier
@@ -409,7 +414,7 @@ type-specifier-seq:
 trailing-type-specifier-seq:
   trailing-type-specifier { trailing-type-specifier } [attribute-specifier-seq]
 
-simple-type-specifier:
+simple-type-specifier: post-hook(clear_nested_name_specifier) all-fail-hook(clear_nested_name_specifier)
   decltype-specifier
   keyword("auto")
   keyword("void")
@@ -437,7 +442,7 @@ type-name:
 decltype-specifier:
   keyword("decltype") operator("(") expression operator(")")
 
-elaborated-type-specifier:
+elaborated-type-specifier: post-hook(clear_nested_name_specifier) all-fail-hook(clear_nested_name_specifier)
   keyword("enum") [nested-name-specifier] identifier()
   class-key [nested-name-specifier] keyword("template") simple-template-id
   class-key [attribute-specifier-seq] [nested-name-specifier] identifier()
@@ -446,7 +451,7 @@ enum-specifier:
   enum-head operator("{") [enumerator-list] operator("}")
   enum-head operator("{") enumerator-list operator(",") operator("}")
 
-enum-head:
+enum-head: post-hook(clear_nested_name_specifier) all-fail-hook(clear_nested_name_specifier)
   enum-key [attribute-specifier-seq] nested-name-specifier identifier() [enum-base]
   enum-key [attribute-specifier-seq] [identifier()] [enum-base]
 
@@ -498,14 +503,14 @@ namespace-body:
 namespace-alias-definition:
   keyword("namespace") identifier() operator("=") qualified-namespace-specifier operator(";")
 
-qualified-namespace-specifier:
+qualified-namespace-specifier: post-hook(clear_nested_name_specifier) all-fail-hook(clear_nested_name_specifier)
   [nested-name-specifier] namespace-name
 
-using-declaration:
+using-declaration: post-hook(clear_nested_name_specifier) all-fail-hook(clear_nested_name_specifier)
   keyword("using") operator("::") unqualified-id operator(";")
   keyword("using") [keyword("typename")] nested-name-specifier unqualified-id operator(";")
 
-using-directive:
+using-directive: post-hook(clear_nested_name_specifier) all-fail-hook(clear_nested_name_specifier)
   [attribute-specifier-seq] keyword("using") keyword("namespace") [nested-name-specifier] namespace-name operator(";")
 
 asm-definition:
@@ -594,7 +599,7 @@ parameters-and-qualifiers:
 trailing-return-type:
   operator("->") trailing-type-specifier-seq [abstract-declarator]
 
-ptr-operator:
+ptr-operator: post-hook(clear_nested_name_specifier) all-fail-hook(clear_nested_name_specifier)
   nested-name-specifier operator("*") [attribute-specifier-seq] [cv-qualifier-seq]
   operator("&&") [attribute-specifier-seq]
   operator("&") [attribute-specifier-seq]
@@ -611,7 +616,7 @@ ref-qualifier:
   operator("&&")
   operator("&")
 
-declarator-id:
+declarator-id: post-hook(clear_nested_name_specifier) all-fail-hook(clear_nested_name_specifier)
   [nested-name-specifier] class-name
   [operator("...")] id-expression
 
@@ -694,14 +699,14 @@ braced-init-list:
   operator("{") initializer-list [operator(",")] operator("}")
 
 
-class-specifier:
+class-specifier: post-hook(class_specifier_done)
   class-head operator("{") [member-specification] operator("}")
 
 class-head:
   class-key [attribute-specifier-seq] class-head-name [class-virt-specifier] [base-clause]
   class-key [attribute-specifier-seq] [base-clause]
 
-class-head-name:
+class-head-name: post-hook(clear_nested_name_specifier) all-fail-hook(clear_nested_name_specifier)
   [nested-name-specifier] class-name
 
 class-virt-specifier:
@@ -754,7 +759,7 @@ base-specifier:
   [attribute-specifier-seq] access-specifier [keyword("virtual")] base-type-specifier
   [attribute-specifier-seq] base-type-specifier
 
-class-or-decltype:
+class-or-decltype: post-hook(clear_nested_name_specifier) all-fail-hook(clear_nested_name_specifier)
   decltype-specifier
   [nested-name-specifier] class-name
 
@@ -830,11 +835,11 @@ template-argument-list:
   template-argument [operator("...")] { operator(",") template-argument [operator("...")] }
 
 template-argument:
-  id-expression
   type-id
+  id-expression
   constant-expression
 
-typename-specifier:
+typename-specifier: post-hook(clear_nested_name_specifier) all-fail-hook(clear_nested_name_specifier)
   keyword("typename") nested-name-specifier [keyword("template")] simple-template-id
   keyword("typename") nested-name-specifier identifier()
 
